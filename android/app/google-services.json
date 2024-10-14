@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "871056472442",
+    "project_id": "getstream-flutter-example",
+    "storage_bucket": "getstream-flutter-example.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:871056472442:android:24f6f8c6eca8b64e8a3ec3",
+        "android_client_info": {
+          "package_name": "com.klilmhdi.getstream_flutter_example"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsrxppoha6wcIBX06vgl5_ovxUYlHJHFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
