@@ -1,10 +1,7 @@
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class UserCredentialsModel {
-  const UserCredentialsModel({
-    required this.token,
-    required this.userInfo,
-  });
+  const UserCredentialsModel({required this.token, required this.userInfo});
 
   final UserToken token;
   final UserInfo userInfo;

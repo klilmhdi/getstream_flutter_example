@@ -1046,7 +1046,7 @@ packages:
     source: hosted
     version: "6.3.1"
   jose:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: jose
       sha256: "7955ec5d131960104e81fbf151abacb9d835c16c9e793ed394b2809f28b2198d"
@@ -1326,7 +1326,7 @@ packages:
     source: hosted
     version: "2.3.0"
   permission_handler:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: permission_handler
       sha256: "18bf33f7fefbd812f37e72091a15575e72d5318854877e0e4035a24ac1113ecb"

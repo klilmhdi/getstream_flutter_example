@@ -132,6 +132,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         final email = emailController.text.trim();
                                         const password = "Hello2024#";
                                         context.read<RegisterCubit>().registerUser(name, email, password, userType);
+                                        emailController.clear();
+                                        nameController.clear();
                                       }
                                     },
                                     child: const Text("Register",

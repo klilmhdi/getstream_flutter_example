@@ -2,8 +2,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+// import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide UserInfo, User;
 import 'package:firebase_database/firebase_database.dart';
+import 'package:getstream_flutter_example/core/di/injector.dart';
+import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_state.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
@@ -22,6 +27,7 @@ class RegisterCubit extends Cubit<RegisterState> {
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
       final user = userCredential.user;
+      final appPreferences = locator<AppPreferences>();
 
       if (user == null) {
         emit(RegisterFailedState("User creation failed. Please try again."));
@@ -48,7 +54,14 @@ class RegisterCubit extends Cubit<RegisterState> {
         // Save User Data to Firebase Realtime Database
         await _database
             .child(uid)
-            .set({'name': name, 'email': email, 'platform': platform, 'token': token, 'role': type});
+            .set({'name': name, 'email': email, 'platform': platform, 'token': token, 'role': type}).then(
+          (_) async {
+            final user = UserInfo(id: uid, name: name, role: type.toLowerCase() == "teacher" ? "admin" : "user");
+            final authController = locator.get<UserAuthController>();
+            await authController.login(User(info: user), appPreferences.environment);
+            print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>User: $user");
+          },
+        );
       });
 
       // Emit Success
