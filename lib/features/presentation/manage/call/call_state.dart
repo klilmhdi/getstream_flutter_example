@@ -14,25 +14,16 @@ class CallLoadingState extends CallingsState {}
 class CallCreatedState extends CallingsState {
   final Call call;
 
-  const CallCreatedState(this.call);
+  const CallCreatedState({required this.call});
 
   @override
   List<Object?> get props => [call];
 }
 
-class CallRequestState extends CallingsState {
-  final String callId;
-
-  const CallRequestState(this.callId);
-
-  @override
-  List<Object?> get props => [callId];
-}
-
 class CallJoinedState extends CallingsState {
   final Call call;
 
-  const CallJoinedState(this.call);
+  const CallJoinedState({required this.call});
 
   @override
   List<Object?> get props => [call];

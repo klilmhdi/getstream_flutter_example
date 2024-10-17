@@ -1,13 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-// import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
-
-// import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
@@ -16,21 +13,8 @@ import 'package:getstream_flutter_example/features/presentation/manage/call/call
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/splash_screen.dart';
 import 'package:getstream_flutter_example/firebase_options.dart';
-
-// import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionState;
 import 'features/presentation/view/auth/signin.dart';
-
-// import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
-// import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
-// import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
-// import 'package:getstream_flutter_example/features/presentation/view/auth/signin.dart';
-// import 'package:stream_video_push_notification/stream_video_push_notification.dart';
-// import 'features/data/models/user_credentials_model.dart';
-// import 'features/presentation/manage/call/call_cubit.dart';
-// import 'package:flutter/material.dart' hide ConnectionState;
-// import 'package:flutter/src/widgets/async.dart' hide ConnectionState;
-// import 'package:stream_video/src/types/other.dart' show ConnectionState;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +23,11 @@ void main() async {
 
 Future<void> initializeServices(BuildContext context) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FirebaseDatabase database = FirebaseDatabase.instance;
+
+  // Optional: Enable persistence on web (if needed)
+  database.databaseURL ??= 'https://getstream-flutter-example-default-rtdb.firebaseio.com';
 
   FlutterError.onError = (errorDetails) {
     if (kDebugMode) {

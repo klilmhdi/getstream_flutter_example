@@ -160,7 +160,6 @@ class FetchUsersCubit extends Cubit<FetchUsersState> {
     }
   }
 
-  // Fetch users based on the current user's role
   Future<void> fetchUsersBasedOnRole() async {
     emit(UserLoading());
 
@@ -172,7 +171,11 @@ class FetchUsersCubit extends Cubit<FetchUsersState> {
         return;
       }
 
-      DocumentSnapshot userDoc = await firestore.collection('users').doc(user.uid).get();
+      // Fetch the current user's role (from the correct subcollection)
+      DocumentSnapshot userDocTeacher = await firestore.collection('users').doc('teachers').collection(user.uid).doc(user.uid).get();
+      DocumentSnapshot userDocStudent = await firestore.collection('users').doc('students').collection(user.uid).doc(user.uid).get();
+
+      DocumentSnapshot userDoc = userDocTeacher.exists ? userDocTeacher : userDocStudent;
 
       if (!userDoc.exists) {
         emit(UserError("User document does not exist."));
@@ -181,11 +184,14 @@ class FetchUsersCubit extends Cubit<FetchUsersState> {
 
       UserModel currentUser = UserModel.fromMap(user.uid, userDoc.data() as Map<String, dynamic>);
 
-      String targetRole = currentUser.role == "Teacher" ? "Student" : "Teacher";
+      // Determine which role to target (opposite of current user's role)
+      String targetRole = currentUser.role == "Teacher" ? "students" : "teachers";
 
+      // Fetch users from the corresponding subcollection
       QuerySnapshot targetUsersSnapshot = await firestore
           .collection('users')
-          .where('role', isEqualTo: targetRole)
+          .doc(targetRole)
+          .collection(targetRole)
           .get();
 
       List<UserModel> targetUsers = targetUsersSnapshot.docs.map((doc) {
@@ -194,71 +200,17 @@ class FetchUsersCubit extends Cubit<FetchUsersState> {
 
       emit(UserLoaded(targetUsers));
     } on FirebaseException catch (e, s) {
-      print("Error: ${e.toString()}");
-      print("StackTrace: ${s.toString()}");
+      print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+      print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>StackTrace: ${s.toString()}");
       if (e.code == 'permission-denied') {
         emit(UserError("Permission denied: ${e.message}"));
       } else {
         emit(UserError("Failed to fetch users: ${e.message}"));
       }
     } catch (e, s) {
-      print("Error: ${e.toString()}");
-      print("StackTrace: ${s.toString()}");
+      print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+      print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>StackTrace: ${s.toString()}");
       emit(UserError("Failed to fetch users: ${e.toString()}"));
     }
   }
-
-  // Future<void> fetchUsersBasedOnRole() async {
-  //   emit(UserLoading());
-  //
-  //   try {
-  //     User? user = auth.currentUser;
-  //
-  //     if (user == null) {
-  //       emit(UserError("No authenticated user found."));
-  //       return;
-  //     }
-  //
-  //     // Fetch the current user's role (from the correct subcollection)
-  //     DocumentSnapshot userDocTeacher = await firestore.collection('users').doc('teachers').collection(user.uid).doc(user.uid).get();
-  //     DocumentSnapshot userDocStudent = await firestore.collection('users').doc('students').collection(user.uid).doc(user.uid).get();
-  //
-  //     DocumentSnapshot userDoc = userDocTeacher.exists ? userDocTeacher : userDocStudent;
-  //
-  //     if (!userDoc.exists) {
-  //       emit(UserError("User document does not exist."));
-  //       return;
-  //     }
-  //
-  //     UserModel currentUser = UserModel.fromMap(user.uid, userDoc.data() as Map<String, dynamic>);
-  //
-  //     // Determine which role to target (opposite of current user's role)
-  //     String targetRole = currentUser.role == "Teacher" ? "students" : "teachers";
-  //
-  //     // Fetch users from the corresponding subcollection
-  //     QuerySnapshot targetUsersSnapshot = await firestore
-  //         .collection('users')
-  //         .doc(targetRole)
-  //         .collection(targetRole)
-  //         .get();
-  //
-  //     List<UserModel> targetUsers = targetUsersSnapshot.docs.map((doc) {
-  //       return UserModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
-  //     }).toList();
-  //
-  //     emit(UserLoaded(targetUsers));
-  //   } on FirebaseException catch (e, s) {
-  //     print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
-  //     print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>StackTrace: ${s.toString()}");
-  //     if (e.code == 'permission-denied') {
-  //       emit(UserError("Permission denied: ${e.message}"));
-  //     } else {
-  //       emit(UserError("Failed to fetch users: ${e.message}"));
-  //     }
-  //   } catch (e, s) {
-  //     print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
-  //     print("@>>>>>>>>>>>>>>>>>>>>>>>>>>>StackTrace: ${s.toString()}");
-  //     emit(UserError("Failed to fetch users: ${e.toString()}"));
-  //   }
-  // }
 }

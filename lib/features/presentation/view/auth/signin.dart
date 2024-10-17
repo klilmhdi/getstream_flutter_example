@@ -22,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final TextEditingController emailController = TextEditingController();
 
-  final _formKey = GlobalKey<FormState>();
+  final formKey = GlobalKey<FormState>();
 
   String userType = 'Student';
 
@@ -31,7 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: SafeArea(
         child: Form(
-          key: _formKey,
+          key: formKey,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: BlocConsumer<RegisterCubit, RegisterState>(
@@ -127,7 +127,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     style:
                                         const ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.deepPurple)),
                                     onPressed: () {
-                                      if (_formKey.currentState!.validate()) {
+                                      if (formKey.currentState!.validate()) {
                                         final name = nameController.text.trim();
                                         final email = emailController.text.trim();
                                         const password = "Hello2024#";

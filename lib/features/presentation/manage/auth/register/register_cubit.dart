@@ -19,6 +19,79 @@ class RegisterCubit extends Cubit<RegisterState> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _database = FirebaseDatabase.instance.ref('users');
 
+  // Future<void> registerUser(String name, String email, String password, String type) async {
+  //   emit(RegisterLoadingState());
+  //
+  //   try {
+  //     // Create User in Firebase Auth
+  //     UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+  //
+  //     final user = userCredential.user;
+  //     final appPreferences = locator<AppPreferences>();
+  //
+  //     if (user == null) {
+  //       emit(RegisterFailedState("User creation failed. Please try again."));
+  //       return;
+  //     }
+  //
+  //     String uid = user.uid; // Correctly obtain the authenticated user's UID
+  //
+  //     // Fetch Platform
+  //     String platform = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS
+  //         ? "Mobile"
+  //         : "Web";
+  //
+  //     // Handle Web Token
+  //     String? token;
+  //     if (platform == "Web") {
+  //       token = user.uid; // Use UID as token for simplicity on Web
+  //     } else {
+  //       token = await FirebaseMessaging.instance.getToken(); // Get FCM token for Mobile
+  //     }
+  //
+  //     // Save User Data to FirebaseFirestore Database with correct UID
+  //     await FirebaseServices().uploadUserDataToFirebase(uid, name: name, email: email, role: type).then((_) async {
+  //       // Save User Data to Firebase Realtime Database
+  //       await _database
+  //           .child(uid)
+  //           .set({'name': name, 'email': email, 'platform': platform, 'token': token, 'role': type}).then(
+  //         (_) async {
+  //           final user = UserInfo(id: uid, name: name, role: type.toLowerCase() == "teacher" ? "admin" : "user", image: "");
+  //           final authController = locator.get<UserAuthController>();
+  //           await authController.login(User(info: user), appPreferences.environment);
+  //           print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>User: $user");
+  //         },
+  //       );
+  //     });
+  //
+  //     // Emit Success
+  //     emit(RegisterSuccessState(user: user));
+  //   } on FirebaseAuthException catch (e) {
+  //     // Handle Firebase Auth specific errors
+  //     String errorMessage;
+  //     switch (e.code) {
+  //       case 'email-already-in-use':
+  //         errorMessage = "This email is already in use.";
+  //         break;
+  //       case 'invalid-email':
+  //         errorMessage = "The email address is not valid.";
+  //         break;
+  //       case 'weak-password':
+  //         errorMessage = "The password is too weak.";
+  //         break;
+  //       default:
+  //         errorMessage = e.message ?? "Registration failed. Please try again.";
+  //     }
+  //     emit(RegisterFailedState(errorMessage));
+  //   } catch (e, s) {
+  //     print("StackTrace: ${s.toString()}");
+  //     print("Error: ${e.toString()}");
+  //     taggedLogger(tag: "StackTrace: ${s.toString()}");
+  //     taggedLogger(tag: "Error: ${e.toString()}");
+  //     String errorMessage = "Registration failed. Please try again.";
+  //     emit(RegisterFailedState(errorMessage));
+  //   }
+  // }
   Future<void> registerUser(String name, String email, String password, String type) async {
     emit(RegisterLoadingState());
 
@@ -55,11 +128,20 @@ class RegisterCubit extends Cubit<RegisterState> {
         await _database
             .child(uid)
             .set({'name': name, 'email': email, 'platform': platform, 'token': token, 'role': type}).then(
-          (_) async {
-            final user = UserInfo(id: uid, name: name, role: type.toLowerCase() == "teacher" ? "admin" : "user");
+              (_) async {
+            final userInfo = UserInfo(
+              id: uid,
+              name: name,
+              role: type.toLowerCase() == "teacher" ? "admin" : "user",
+              image: "",
+            );
+            final user = User(info: userInfo);
             final authController = locator.get<UserAuthController>();
-            await authController.login(User(info: user), appPreferences.environment);
-            print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>User: $user");
+
+            // Properly log in the user with the correct environment
+            await authController.login(user, appPreferences.environment);
+
+            print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>User: $userInfo");
           },
         );
       });
@@ -86,10 +168,9 @@ class RegisterCubit extends Cubit<RegisterState> {
     } catch (e, s) {
       print("StackTrace: ${s.toString()}");
       print("Error: ${e.toString()}");
-      taggedLogger(tag: "StackTrace: ${s.toString()}");
-      taggedLogger(tag: "Error: ${e.toString()}");
       String errorMessage = "Registration failed. Please try again.";
       emit(RegisterFailedState(errorMessage));
     }
   }
+
 }

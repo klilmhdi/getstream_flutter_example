@@ -6,10 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class ShareCallCard extends StatelessWidget {
-  const ShareCallCard({
-    required this.callId,
-    super.key,
-  });
+  const ShareCallCard({required this.callId, super.key});
 
   final String callId;
 
@@ -17,68 +14,54 @@ class ShareCallCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = StreamVideoTheme.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.blue.shade900,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(children: [
-        StreamButton.active(
-          icon: const Icon(
-            Icons.person_add_alt_1,
-            color: Colors.white,
-          ),
-          label: 'Share link with others',
-          onPressed: () async {
-            await Share.share(callId);
-          },
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Or share this call ID with others you want in the meeting.',
-          style: theme.textTheme.body.copyWith(
-            color: theme.colorTheme.textLowEmphasis,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Text('Call ID: ', style: theme.textTheme.title3),
-            Text(
-              callId,
-              style: theme.textTheme.title3.copyWith(
-                color: CupertinoColors.activeGreen,
+    // return Container(
+    //   decoration: BoxDecoration(
+    //     color: Colors.blue.shade900,
+    //     borderRadius: BorderRadius.circular(16),
+    //   ),
+    //   padding: const EdgeInsets.all(16),
+    //   child: Column(children: [
+    //     StreamButton.active(
+    //       icon: const Icon(
+    //         Icons.person_add_alt_1,
+    //         color: Colors.white,
+    //       ),
+    //       label: 'Share link with others',
+    //       onPressed: () async {
+    //         await Share.share(callId);
+    //       },
+    //     ),
+    //     const SizedBox(height: 16),
+    //     Text(
+    //       'Or share this call ID with others you want in the meeting.',
+    //       style: theme.textTheme.body.copyWith(
+    //         color: theme.colorTheme.textLowEmphasis,
+    //       ),
+    //     ),
+    //     const SizedBox(height: 8),
+    //
+    //   ]),
+    // );
+    return IconButton(
+      onPressed: () async {
+        await Clipboard.setData(ClipboardData(text: callId));
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check, color: CupertinoColors.activeGreen),
+                  const SizedBox(width: 8),
+                  Text('Call ID copied to clipboard, Call ID: $callId',
+                      style: theme.textTheme.body.copyWith(color: theme.colorTheme.textHighEmphasis))
+                ],
               ),
             ),
-            const Spacer(),
-            IconButton(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: callId));
-
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(Icons.check,
-                              color: CupertinoColors.activeGreen),
-                          const SizedBox(width: 8),
-                          Text('Call ID copied to clipboard',
-                              style: theme.textTheme.body.copyWith(
-                                color: theme.colorTheme.textHighEmphasis,
-                              )),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.copy_all),
-            )
-          ],
-        )
-      ]),
+          );
+        }
+      },
+      icon: const Icon(Icons.copy_all),
     );
   }
 }

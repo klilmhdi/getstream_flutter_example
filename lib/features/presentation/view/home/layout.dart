@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/di/injector.dart';
+import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/models/user_model.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
@@ -24,6 +27,7 @@ class Layout extends StatefulWidget {
 
 class _LayoutState extends State<Layout> {
   late FetchUsersCubit _fetchUsersCubit;
+  final userAuthController = locator.get<UserAuthController>();
 
   @override
   void initState() {
@@ -43,6 +47,8 @@ class _LayoutState extends State<Layout> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = userAuthController.currentUser;
+    print(">>>>>>>>>>>>>Current User: $currentUser");
     return BlocProvider<FetchUsersCubit>(
       create: (context) => _fetchUsersCubit,
       child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
@@ -57,6 +63,26 @@ class _LayoutState extends State<Layout> {
             );
           } else if (state is UserLoaded) {
             return Scaffold(
+                appBar: AppBar(
+                  elevation: 0,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  leading: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: CircleAvatar(child: Text(currentUser?.role.toString().toUpperCase() ?? "")),
+                  ),
+                  titleSpacing: 4,
+                  centerTitle: false,
+                  title: Text(
+                    currentUser?.name ?? "",
+                    style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
+                  ),
+                  actions: [
+                    IconButton(
+                        onPressed: () async =>
+                        await FirebaseServices().logout().then((value) => Navigator.pop(context)),
+                        icon: const Icon(Icons.logout, color: Colors.redAccent))
+                  ],
+                ),
                 body: widget.type == 'Teacher'
                     ? const TeacherScreen()
                     : widget.type == 'Student'
@@ -69,152 +95,134 @@ class _LayoutState extends State<Layout> {
       ),
     );
   }
+
+// @override
+  // Widget build(BuildContext context) {
+  //   final currentUser = userAuthController.currentUser;
+  //   print(">>>>>>>>>>>>>Current User: $currentUser");
+  //   return BlocProvider<FetchUsersCubit>(
+  //     create: (context) => _fetchUsersCubit,
+  //     child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
+  //       builder: (context, state) {
+  //         if (state is UserLoading) {
+  //           return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  //         } else if (state is UserError) {
+  //           return Scaffold(
+  //             body: Center(
+  //               child: Text('Error loading users: ${state.error}'),
+  //             ),
+  //           );
+  //         } else if (state is UserLoaded) {
+  //           return Scaffold(
+  //               appBar: AppBar(
+  //                 elevation: 0,
+  //                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+  //                 leading: Padding(
+  //                   padding: const EdgeInsets.all(8),
+  //                   child: CircleAvatar(child: Text(currentUser!.role.toString().toUpperCase())),
+  //                 ),
+  //                 titleSpacing: 4,
+  //                 centerTitle: false,
+  //                 title: Text(
+  //                   currentUser.name.toString(),
+  //                   style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
+  //                 ),
+  //                 actions: [
+  //                   // IconButton(
+  //                   //   icon: const Icon(
+  //                   //     Icons.close,
+  //                   //     color: Colors.white,
+  //                   //   ),
+  //                   //   onPressed: () => Navigator.maybePop(context),
+  //                   // ),
+  //                   IconButton(
+  //                       onPressed: () async =>
+  //                           await FirebaseServices().logout().then((value) => Navigator.pop(context)),
+  //                       icon: const Icon(Icons.logout, color: Colors.redAccent))
+  //                 ],
+  //               ),
+  //               body: widget.type == 'Teacher'
+  //                   ? const TeacherScreen()
+  //                   : widget.type == 'Student'
+  //                       ? const StudentScreen()
+  //                       : Center(child: Text('Unknown type: ${widget.type}')));
+  //         } else {
+  //           return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  //         }
+  //       },
+  //     ),
+  //   );
+  // }
 }
 
-// class TeacherScreen extends StatelessWidget {
-//   const TeacherScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocProvider(
-//       create: (context) => CallingsCubit(),
-//       child: BlocListener<CallingsCubit, CallingsState>(
-//         listener: (context, state) {},
-//         child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
-//           builder: (context, state) => Scaffold(
-//             appBar: AppBar(
-//                 leading: IconButton(
-//                     onPressed: () async => await FirebaseServices().logout().then((value) => Navigator.pop(context)),
-//                     icon: const Icon(Icons.logout, color: Colors.redAccent))),
-//             body: Center(
-//                 child: state is UserLoading
-//                     ? const Center(child: CircularProgressIndicator())
-//                     : (state as UserLoaded).users.isEmpty
-//                         ? const Center(child: Text("No students found."))
-//                         : ListView.builder(
-//                             itemCount: state.users.length,
-//                             itemBuilder: (context, index) {
-//                               UserModel student = state.users[index];
-//                               return ListTile(
-//                                 leading: CircleAvatar(
-//                                   backgroundColor: Colors.deepPurple,
-//                                   child: Text(
-//                                     student.name.isNotEmpty ? student.name[0] : '?',
-//                                     style: const TextStyle(color: Colors.white),
-//                                   ),
-//                                 ),
-//                                 title: Text(student.name),
-//                                 subtitle: Text(student.email),
-//                                 trailing: IconButton(
-//                                   onPressed: () {
-//                                     // Implement call functionality
-//                                   },
-//                                   icon: const Icon(Icons.call),
-//                                   color: Colors.green,
-//                                 ),
-//                               );
-//                             },
-//                           )),
-//             floatingActionButton: FloatingActionButton(
-//               child: const Icon(Icons.add),
-//               onPressed: () async {
-//                 // Fetch the teacherId (make sure it's valid)
-//                 final teacherId = context.read<RegisterCubit>().state is RegisterSuccessState
-//                     ? (context.read<RegisterCubit>().state as RegisterSuccessState).user.uid
-//                     : null;
-//
-//                 if (teacherId != null) {
-//                   // Initiate the call
-//                   await context.read<CallingsCubit>().initiateCall(teacherId, context);
-//                 }
-//               },
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
 class TeacherScreen extends StatelessWidget {
   const TeacherScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<CallingsCubit>(create: (context) => CallingsCubit()),
-        BlocProvider<FetchUsersCubit>(
-            create: (context) =>
-            FetchUsersCubit(firestore: FirebaseFirestore.instance, auth: FirebaseAuth.instance)
-              ..fetchUsersBasedOnRole())
-      ],
-      child: BlocListener<CallingsCubit, CallingsState>(
-        listener: (context, state) {},
-        child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
-          builder: (context, state) {
-            return Scaffold(
-              appBar: AppBar(
-                  leading: IconButton(
-                      onPressed: () async => await FirebaseServices().logout().then((_) => Navigator.pop(context)),
-                      icon: const Icon(Icons.logout, color: Colors.redAccent)),
-                  title: const Text('Teacher Screen')),
-              body: _buildBody(state),
-              floatingActionButton: FloatingActionButton(
-                child: const Icon(Icons.add),
-                onPressed: () async {
-                  final teacherId = context
-                      .read<RegisterCubit>()
-                      .state is RegisterSuccessState
-                      ? (context
-                      .read<RegisterCubit>()
-                      .state as RegisterSuccessState).user.uid
-                      : null;
+    return BlocProvider(
+      create: (context) => CallingsCubit(),
+      child: BlocBuilder<CallingsCubit, CallingsState>(
+        builder: (context, state) => Scaffold(
+          // body: Center(
+          //     child: state is UserLoading
+          //         ? const Center(child: CircularProgressIndicator())
+          //         : (state as UserLoaded).users.isEmpty
+          //             ? const Center(child: Text("No students found."))
+          //             : ListView.builder(
+          //                 itemCount: state.users.length,
+          //                 itemBuilder: (context, index) {
+          //                   UserModel student = state.users[index];
+          //                   return ListTile(
+          //                     leading: CircleAvatar(
+          //                       backgroundColor: Colors.deepPurple,
+          //                       child: Text(
+          //                         student.name.isNotEmpty ? student.name[0] : '?',
+          //                         style: const TextStyle(color: Colors.white),
+          //                       ),
+          //                     ),
+          //                     title: Text(student.name),
+          //                     subtitle: Text(student.email),
+          //                     trailing: IconButton(
+          //                       onPressed: () {
+          //                         // Implement call functionality
+          //                       },
+          //                       icon: const Icon(Icons.call),
+          //                       color: Colors.green,
+          //                     ),
+          //                   );
+          //                 },
+          //               )),
+          body: const Center(
+            child: Text("Let's to create a call", style: TextStyle(color: CupertinoColors.black, fontSize: 40))
+          ),
+          floatingActionButton: FloatingActionButton(
+            child: const Icon(Icons.add),
+            onPressed: () async {
+              final teacherId = context.read<RegisterCubit>().state is RegisterSuccessState
+                  ? (context.read<RegisterCubit>().state as RegisterSuccessState).user.uid
+                  : null;
 
-                  if (teacherId != null) {
-                    await context.read<CallingsCubit>().initiateCall(teacherId, context);
+              if (teacherId != null) {
+                await context.read<CallingsCubit>().initiateCall(teacherId, context).then((value) {
+                  if (state is CallCreatedState) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ReadyToStartScreen(
+                                onJoinCallPressed: (value) => context.read<CallingsCubit>().joinMeet(context),
+                                call: state.call)));
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Teacher ID is invalid.')));
+                    print("Failed Create call: $state");
                   }
-                },
-              ),
-            );
-          },
+                }).catchError((onError) => ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('Failed: ${onError.toString()}'))));
+              }
+            },
+          ),
         ),
       ),
     );
-  }
-
-  Widget _buildBody(FetchUsersState state) {
-    if (state is UserLoading) {
-      return const Center(child: CircularProgressIndicator());
-    } else if (state is UserLoaded) {
-      if (state.users.isEmpty) {
-        return const Center(child: Text("No students found."));
-      }
-      return ListView.builder(
-        itemCount: state.users.length,
-        itemBuilder: (context, index) {
-          UserModel student = state.users[index];
-          return ListTile(
-            leading: CircleAvatar(
-                backgroundColor: Colors.deepPurple,
-                child:
-                Text(student.name.isNotEmpty ? student.name[0] : '?', style: const TextStyle(color: Colors.white))),
-            title: Text(student.name),
-            subtitle: Text(student.email),
-            trailing: IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.call),
-              color: Colors.green,
-            ),
-          );
-        },
-      );
-    } else if (state is UserError) {
-      return Center(child: Text("Error: ${state.error}"));
-    } else {
-      return const Center(child: Text("No data available."));
-    }
   }
 }
 
