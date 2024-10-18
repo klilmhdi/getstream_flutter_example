@@ -22,7 +22,7 @@ Future<void> _backgroundVoipCallHandler() async {
   final prefs = await SharedPreferences.getInstance();
   final appPrefs = AppPreferences(prefs: prefs);
 
-  final apiKey = appPrefs.apiKey;
+  final apiKey = appPrefs.setApiKey('8fqmp9ngwbm8');
   final userCredentials = appPrefs.userCredentials;
 
   if (apiKey == null || userCredentials == null) {
@@ -30,7 +30,7 @@ Future<void> _backgroundVoipCallHandler() async {
   }
 
   StreamVideo(
-    apiKey,
+    '8fqmp9ngwbm8',
     user: User(info: userCredentials.userInfo),
     userToken: userCredentials.token.rawValue,
     options: const StreamVideoOptions(

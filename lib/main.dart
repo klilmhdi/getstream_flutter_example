@@ -47,13 +47,27 @@ Future<void> initializeServices(BuildContext context) async {
   await _handleSavedLogin();
 }
 
+// Future<void> _handleSavedLogin() async {
+//   final prefs = locator.get<AppPreferences>();
+//   final credentials = prefs.userCredentials;
+//   if (credentials == null) return;
+//
+//   final authController = locator.get<UserAuthController>();
+//   await authController.login(User(info: credentials.userInfo), prefs.environment);
+// }
+
 Future<void> _handleSavedLogin() async {
   final prefs = locator.get<AppPreferences>();
   final credentials = prefs.userCredentials;
-  if (credentials == null) return;
+
+  if (credentials == null || credentials.userInfo.id.isEmpty) {
+    print("No saved user credentials found.");
+    return;
+  }
 
   final authController = locator.get<UserAuthController>();
   await authController.login(User(info: credentials.userInfo), prefs.environment);
+  print("User auto-logged in with credentials from SharedPreferences.");
 }
 
 class MainApp extends StatefulWidget {

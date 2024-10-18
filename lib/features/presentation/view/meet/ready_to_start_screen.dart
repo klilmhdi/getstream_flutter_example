@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
@@ -58,15 +59,23 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        leading: Padding(padding: const EdgeInsets.all(8), child: StreamUserAvatar(user: currentUser!)),
+        leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: CircleAvatar(backgroundImage: NetworkImage(currentUser?.image ?? ""))),
         titleSpacing: 4,
         centerTitle: false,
-        title: Text(currentUser.name, style: textTheme.body),
+        title: Text(
+          currentUser?.name ?? "Empty Name",
+          style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
+        ),
         actions: [
           CircleAvatar(
             child: IconButton(
               icon: const Icon(Icons.call_end, color: Colors.red),
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: () => Navigator.maybePop(context).then((_) {
+                widget.call.reject();
+                widget.call.leave();
+              }),
             ),
           ),
         ],

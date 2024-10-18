@@ -29,7 +29,6 @@ class CallingsCubit extends Cubit<CallingsState> {
 
   Future<void> initiateCall(String teacherId, context, {String? studentId}) async {
     emit(CallLoadingState());
-    await _checkAndRequestPermissions(context);
 
     late final streamVideo = locator.get<StreamVideo>();
     final call = streamVideo.makeCall(callType: StreamCallType.defaultType(), id: callId);
@@ -168,11 +167,14 @@ class CallingsCubit extends Cubit<CallingsState> {
       late final streamVideo = locator.get<StreamVideo>();
       final call = streamVideo.makeCall(callType: StreamCallType.defaultType(), id: callId);
 
-      await call.join().then((value) {
-        emit(CallJoinedState(call: call));
-        Navigator.push(context, MaterialPageRoute(builder: (context) => MeetScreen(call: call, connectOptions: null)));
-        print("?>>>>>>>>>>>>>>>>>>>>>>>>Call Created Successful");
-        print("?>>>>>>>>>>>>>>>>>>>>>>>>Call Created: ${call.state.value}");
+      await _checkAndRequestPermissions(context).then((value) async{
+        await call.join().then((value) {
+          emit(CallJoinedState(call: call));
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => MeetScreen(call: call)));
+          print("?>>>>>>>>>>>>>>>>>>>>>>>>Call Created Successful");
+          print("?>>>>>>>>>>>>>>>>>>>>>>>>Call Created: ${call.state.value}");
+        });
       });
     } catch (e, s) {
       print("Failed Call initial error: ${e.toString()}");

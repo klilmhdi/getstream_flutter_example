@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -9,6 +10,7 @@ import 'package:getstream_flutter_example/features/data/models/user_model.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
+import 'package:getstream_flutter_example/features/presentation/view/auth/signin.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/meet_screen.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/ready_to_start_screen.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide Filter;
@@ -27,14 +29,14 @@ class Layout extends StatefulWidget {
 
 class _LayoutState extends State<Layout> {
   late FetchUsersCubit _fetchUsersCubit;
-  final userAuthController = locator.get<UserAuthController>();
+  late final _userAuthController;
 
   @override
   void initState() {
     super.initState();
     // Initialize the cubit with Firebase services
     _fetchUsersCubit = FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth);
-
+    _userAuthController = locator.get<UserAuthController>();
     // Fetch users based on role
     _fetchUsersCubit.fetchUsersBasedOnRole();
   }
@@ -47,7 +49,7 @@ class _LayoutState extends State<Layout> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = userAuthController.currentUser;
+    final currentUser = _userAuthController.currentUser;
     print(">>>>>>>>>>>>>Current User: $currentUser");
     return BlocProvider<FetchUsersCubit>(
       create: (context) => _fetchUsersCubit,
@@ -56,38 +58,33 @@ class _LayoutState extends State<Layout> {
           if (state is UserLoading) {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           } else if (state is UserError) {
-            return Scaffold(
-              body: Center(
-                child: Text('Error loading users: ${state.error}'),
-              ),
-            );
+            return Scaffold(body: Center(child: Text('Error loading users: ${state.error}')));
           } else if (state is UserLoaded) {
             return Scaffold(
                 appBar: AppBar(
                   elevation: 0,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   leading: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: CircleAvatar(child: Text(currentUser?.role.toString().toUpperCase() ?? "")),
-                  ),
+                      padding: const EdgeInsets.all(8),
+                      child: CircleAvatar(backgroundImage: NetworkImage(currentUser?.image ?? ""))),
                   titleSpacing: 4,
                   centerTitle: false,
                   title: Text(
-                    currentUser?.name ?? "",
+                    currentUser?.name ?? "Empty Name",
                     style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
                   ),
                   actions: [
                     IconButton(
-                        onPressed: () async =>
-                        await FirebaseServices().logout().then((value) => Navigator.pop(context)),
+                        onPressed: () async => await FirebaseServices().logout().then((value) =>
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen()))),
                         icon: const Icon(Icons.logout, color: Colors.redAccent))
                   ],
                 ),
                 body: widget.type == 'Teacher'
                     ? const TeacherScreen()
                     : widget.type == 'Student'
-                    ? const StudentScreen()
-                    : Center(child: Text('Unknown type: ${widget.type}')));
+                        ? const StudentScreen()
+                        : Center(child: Text('Unknown type: ${widget.type}')));
           } else {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
@@ -95,64 +92,6 @@ class _LayoutState extends State<Layout> {
       ),
     );
   }
-
-// @override
-  // Widget build(BuildContext context) {
-  //   final currentUser = userAuthController.currentUser;
-  //   print(">>>>>>>>>>>>>Current User: $currentUser");
-  //   return BlocProvider<FetchUsersCubit>(
-  //     create: (context) => _fetchUsersCubit,
-  //     child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
-  //       builder: (context, state) {
-  //         if (state is UserLoading) {
-  //           return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  //         } else if (state is UserError) {
-  //           return Scaffold(
-  //             body: Center(
-  //               child: Text('Error loading users: ${state.error}'),
-  //             ),
-  //           );
-  //         } else if (state is UserLoaded) {
-  //           return Scaffold(
-  //               appBar: AppBar(
-  //                 elevation: 0,
-  //                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-  //                 leading: Padding(
-  //                   padding: const EdgeInsets.all(8),
-  //                   child: CircleAvatar(child: Text(currentUser!.role.toString().toUpperCase())),
-  //                 ),
-  //                 titleSpacing: 4,
-  //                 centerTitle: false,
-  //                 title: Text(
-  //                   currentUser.name.toString(),
-  //                   style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
-  //                 ),
-  //                 actions: [
-  //                   // IconButton(
-  //                   //   icon: const Icon(
-  //                   //     Icons.close,
-  //                   //     color: Colors.white,
-  //                   //   ),
-  //                   //   onPressed: () => Navigator.maybePop(context),
-  //                   // ),
-  //                   IconButton(
-  //                       onPressed: () async =>
-  //                           await FirebaseServices().logout().then((value) => Navigator.pop(context)),
-  //                       icon: const Icon(Icons.logout, color: Colors.redAccent))
-  //                 ],
-  //               ),
-  //               body: widget.type == 'Teacher'
-  //                   ? const TeacherScreen()
-  //                   : widget.type == 'Student'
-  //                       ? const StudentScreen()
-  //                       : Center(child: Text('Unknown type: ${widget.type}')));
-  //         } else {
-  //           return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  //         }
-  //       },
-  //     ),
-  //   );
-  // }
 }
 
 class TeacherScreen extends StatelessWidget {
@@ -164,43 +103,13 @@ class TeacherScreen extends StatelessWidget {
       create: (context) => CallingsCubit(),
       child: BlocBuilder<CallingsCubit, CallingsState>(
         builder: (context, state) => Scaffold(
-          // body: Center(
-          //     child: state is UserLoading
-          //         ? const Center(child: CircularProgressIndicator())
-          //         : (state as UserLoaded).users.isEmpty
-          //             ? const Center(child: Text("No students found."))
-          //             : ListView.builder(
-          //                 itemCount: state.users.length,
-          //                 itemBuilder: (context, index) {
-          //                   UserModel student = state.users[index];
-          //                   return ListTile(
-          //                     leading: CircleAvatar(
-          //                       backgroundColor: Colors.deepPurple,
-          //                       child: Text(
-          //                         student.name.isNotEmpty ? student.name[0] : '?',
-          //                         style: const TextStyle(color: Colors.white),
-          //                       ),
-          //                     ),
-          //                     title: Text(student.name),
-          //                     subtitle: Text(student.email),
-          //                     trailing: IconButton(
-          //                       onPressed: () {
-          //                         // Implement call functionality
-          //                       },
-          //                       icon: const Icon(Icons.call),
-          //                       color: Colors.green,
-          //                     ),
-          //                   );
-          //                 },
-          //               )),
           body: const Center(
-            child: Text("Let's to create a call", style: TextStyle(color: CupertinoColors.black, fontSize: 40))
-          ),
+              child: Text("Let's to create a call", style: TextStyle(color: CupertinoColors.black, fontSize: 40))),
           floatingActionButton: FloatingActionButton(
             child: const Icon(Icons.add),
             onPressed: () async {
               final teacherId = context.read<RegisterCubit>().state is RegisterSuccessState
-                  ? (context.read<RegisterCubit>().state as RegisterSuccessState).user.uid
+                  ? (context.read<RegisterCubit>().state as RegisterSuccessState).user.id
                   : null;
 
               if (teacherId != null) {
@@ -210,13 +119,12 @@ class TeacherScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                             builder: (context) => ReadyToStartScreen(
-                                onJoinCallPressed: (value) => context.read<CallingsCubit>().joinMeet(context),
+                                onJoinCallPressed: (_) => context.read<CallingsCubit>().joinMeet(context),
                                 call: state.call)));
                   } else {
                     print("Failed Create call: $state");
                   }
-                }).catchError((onError) => ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Failed: ${onError.toString()}'))));
+                });
               }
             },
           ),
@@ -232,10 +140,6 @@ class StudentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          leading: IconButton(
-              onPressed: () async => await FirebaseServices().logout().then((value) => Navigator.pop(context)),
-              icon: const Icon(Icons.logout, color: Colors.redAccent))),
       body: BlocBuilder<FetchUsersCubit, FetchUsersState>(
         builder: (context, state) {
           if (state is UserLoading) {
@@ -291,10 +195,7 @@ class StudentScreen extends StatelessWidget {
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // _joinCall(context, teacherId);
-              },
+              onPressed: () {},
               child: const Text('Join'),
             ),
           ],
