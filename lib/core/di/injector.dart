@@ -22,15 +22,15 @@ Future<void> _backgroundVoipCallHandler() async {
   final prefs = await SharedPreferences.getInstance();
   final appPrefs = AppPreferences(prefs: prefs);
 
-  final apiKey = appPrefs.setApiKey('8fqmp9ngwbm8');
+  final apiKey = appPrefs.environment;
   final userCredentials = appPrefs.userCredentials;
 
-  if (apiKey == null || userCredentials == null) {
+  if (userCredentials == null) {
     return;
   }
 
   StreamVideo(
-    '8fqmp9ngwbm8',
+    apiKey.toString(),
     user: User(info: userCredentials.userInfo),
     userToken: userCredentials.token.rawValue,
     options: const StreamVideoOptions(
@@ -157,7 +157,41 @@ StreamChatClient _initStreamChat(String apiKey) {
   return streamChatClient;
 }
 
+// StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, TokenLoader? tokenLoader}) {
+//   final streamVideoClient = StreamVideo(
+//     apiKey,
+//     user: user,
+//     tokenLoader: tokenLoader,
+//     options: const StreamVideoOptions(
+//       logPriority: Priority.verbose,
+//       muteAudioWhenInBackground: true,
+//       muteVideoWhenInBackground: true,
+//     ),
+//     pushNotificationManagerProvider: StreamVideoPushNotificationManager.create(
+//       iosPushProvider: const StreamVideoPushProvider.apn(
+//         name: 'flutter-apn',
+//       ),
+//       androidPushProvider: const StreamVideoPushProvider.firebase(
+//         name: 'flutter-firebase',
+//       ),
+//       pushParams: const StreamVideoPushParams(
+//         appName: "Example",
+//         ios: IOSParams(iconName: 'IconMask'),
+//       ),
+//       backgroundVoipCallHandler: _backgroundVoipCallHandler,
+//       registerApnDeviceToken: true,
+//     ),
+//   );
+//
+//   return streamVideoClient;
+// }
 StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, TokenLoader? tokenLoader}) {
+  if (initialToken == null || initialToken.isEmpty) {
+    print("Invalid token: Token is missing or expired.");
+    throw Exception("Invalid token");
+  }
+
+  debugPrint(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Initial token: $initialToken");
   final streamVideoClient = StreamVideo(
     apiKey,
     user: user,
@@ -179,7 +213,6 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
         ios: IOSParams(iconName: 'IconMask'),
       ),
       backgroundVoipCallHandler: _backgroundVoipCallHandler,
-      registerApnDeviceToken: true,
     ),
   );
 

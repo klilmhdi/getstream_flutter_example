@@ -62,7 +62,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
           // Save user credentials in SharedPreferences
           await appPreferences.setUserCredentials(UserCredentialsModel(
-            token: UserToken.jwt(generateJwt(userId: uid, secretKey: 'cx9tktcjg34ew2uskpv9d4ewfxh2b5ya3xuzn79gkvtrc8rkugmt9yua2h55cz2k')),
+            token: UserToken.jwt(generateJwt(userId: uid, secretKey: '7azrmrktn5q59se4nvdetrzepn3gg5v7evuxhkj5x7ydg29hfdcbp9ph483vyhwm')),
             userInfo: user,
           ));
 

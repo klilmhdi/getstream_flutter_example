@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!--
-      If you are serving your web app in a path other than the root, change the
-      href value below to reflect the base path you are serving from.
-
-      The path provided below has to start and end with a slash "/" in order for
-      it to work correctly.
-
-      For more details:
-      * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-      This is a placeholder for base href that will be replaced by the value of
-      the `--base-href` argument provided to `flutter build`.
-    -->
     <base href="/">
 
     <meta charset="UTF-8">
@@ -31,13 +18,14 @@
 
     <title>GetStream Flutter</title>
     <link rel="manifest" href="manifest.json">
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-messaging.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-analytics.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-messaging.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-analytics.js"></script>
+    <script src="web/firebase-messaging-sw.js" async></script>
+    <script src="web/flutter_bootstrap.js" async></script>
 </head>
 <body>
 <script>
@@ -55,27 +43,37 @@
     });
 
     // Register the service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('firebase-messaging-sw.js')
-        .then(function(registration) {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      .then(function(registration) {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
 
-          // Only after service worker is registered, initialize Firebase Messaging
-          initializeFirebaseMessaging();
-        })
-        .catch(function(err) {
-          console.log('ServiceWorker registration failed: ', err);
-        });
-    }
+        // Only after the service worker is registered, initialize Firebase Messaging
+        initializeFirebaseMessaging();
+      })
+      .catch(function(err) {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  } else {
+    console.log('ServiceWorker is not supported in this browser.');
+  }
+
+  function initializeFirebaseMessaging() {
+    // Initialize Firebase Cloud Messaging here, after the service worker is registered
+    const messaging = firebase.messaging();
+
+    messaging.getToken({ vapidKey: 'BJ5rud-ytdfp0f2RNMkLFkgEkZSn-sN7cl1UMg9qT3ueo_KoADtX-pB9cOiYin7_zmS7MS94YG7AiLkiQtW0igU' }).then((token) => {
+      console.log('FCM Token:', token);
+    }).catch((err) => {
+      console.log('FCM Token Error:', err);
+    });
+  }
 </script>
-
 
 <!-- This script adds the flutter initialization JS code -->
 <script src="main.dart.js"></script>
 <script src="flutter.js" defer></script>
-<script src="firebase-messaging-sw.js"></script>
-<script src="flutter_bootstrap.js" async></script>
-
-
+<script src="web/firebase-messaging-sw.js" async></script>
+<script src="web/flutter_bootstrap.js" async></script>
 </body>
 </html>

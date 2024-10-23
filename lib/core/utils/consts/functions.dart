@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 /// generate callID from random numbers
 String generateRandomNumber(int length) {
@@ -14,16 +15,14 @@ String generateRandomNumber(int length) {
   return number;
 }
 
+/// generate sessionID
+String sessionId = const Uuid().v4();
+
 /// generate callID from random letters and numbers
 const _chars = 'abcdefghijklmnopqrstuvwxyz1234567890';
 Random _rnd = Random();
 
-String generateCallId(int length) => String.fromCharCodes(
-      Iterable.generate(
-        length,
-        (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length)),
-      ),
-    );
+String generateCallId(int length) => String.fromCharCodes(Iterable.generate(length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
 
 /// generate JWT
 String generateJwt({required String userId, required String secretKey, int expiryMinutes = 60}) {

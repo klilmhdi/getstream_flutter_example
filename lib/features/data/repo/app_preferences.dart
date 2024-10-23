@@ -11,34 +11,10 @@ class AppPreferences {
   final SharedPreferences _prefs;
 
   static const String _kUserCredentialsPref = 'user_credentials';
-  static const String _kApiKeyPref = '8fqmp9ngwbm8';
+  static const String _kApiKeyPref = 'z3k88gbquy4a';
   static const String _kEnvironemntPref = 'environment';
 
-  // UserCredentialsModel? get userCredentials {
-  //   final jsonString = _prefs.getString(_kUserCredentialsPref);
-  //   if (jsonString == null) {
-  //     print(">>>>>>>>>>>>>>>>>>>>in AppPreferences class, User credentials not found in SharedPreferences.");
-  //     return UserCredentialsModel.empty();
-  //   }
-  //
-  //   try {
-  //     final json = jsonDecode(jsonString) as Map<String, Object?>;
-  //     return UserCredentialsModel.fromJson(json);
-  //   } catch (e) {
-  //     print("Error decoding user credentials: $e");
-  //     return UserCredentialsModel.empty();
-  //   }
-  // }
-  //
-  // String? get apiKey => _prefs.getString(_kApiKeyPref);
-  //
-  EnvEnum get environment => EnvEnum.fromSubdomain(
-      _prefs.getString(_kEnvironemntPref) ?? EnvEnum.pronto.name);
-  //
-  // Future<bool> setUserCredentials(UserCredentialsModel? credentials) {
-  //   final jsonString = jsonEncode(credentials?.toJson());
-  //   return _prefs.setString(_kUserCredentialsPref, jsonString);
-  // }
+  EnvEnum get environment => EnvEnum.fromSubdomain(_prefs.getString(_kEnvironemntPref) ?? EnvEnum.pronto.name);
 
   UserCredentialsModel? get userCredentials {
     final jsonString = _prefs.getString(_kUserCredentialsPref);

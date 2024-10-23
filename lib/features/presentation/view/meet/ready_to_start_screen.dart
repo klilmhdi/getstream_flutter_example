@@ -93,10 +93,27 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
                     style: textTheme.title1.copyWith(fontWeight: FontWeight.bold, color: colorTheme.textHighEmphasis)),
                 const SizedBox(height: 16),
                 Center(
-                    child: StreamLobbyVideo(
-                        call: widget.call,
-                        onMicrophoneTrackSet: (track) => _microphoneTrack = track,
-                        onCameraTrackSet: (track) => _cameraTrack = track)),
+                  // child: StreamLobbyVideo(
+                  //     call: widget.call,
+                  //     onMicrophoneTrackSet: (track) => _microphoneTrack = track,
+                  //     onCameraTrackSet: (track) => _cameraTrack = track)
+                  child: StreamLobbyVideo(
+                      call: widget.call,
+                      onMicrophoneTrackSet: (track) {
+                        if (track != null) {
+                          _microphoneTrack = track;
+                        } else {
+                          print("Microphone track is null, cannot proceed.");
+                        }
+                      },
+                      onCameraTrackSet: (track) {
+                        if (track != null) {
+                          _cameraTrack = track;
+                        } else {
+                          print("Camera track is null, cannot proceed.");
+                        }
+                      }),
+                ),
                 const SizedBox(height: 24),
                 Padding(
                     padding: const EdgeInsets.all(16),
