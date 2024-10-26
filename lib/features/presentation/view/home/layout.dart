@@ -1,24 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
-import 'package:getstream_flutter_example/features/data/models/user_model.dart';
-import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/view/auth/signin.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/student_screen.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/teacher_screen.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/meet_screen.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/ready_to_start_screen.dart';
-import 'package:stream_video_flutter/stream_video_flutter.dart' hide Filter;
-import 'package:stream_chat_flutter/stream_chat_flutter.dart' show Channel, Filter, StreamChatClient;
-import '../../manage/auth/register/register_state.dart';
-import '../../manage/call/call_cubit.dart';
 
 class Layout extends StatefulWidget {
   final String type;
@@ -36,11 +26,8 @@ class _LayoutState extends State<Layout> {
   @override
   void initState() {
     super.initState();
-    // Initialize the cubit with Firebase services
     _fetchUsersCubit = FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth);
     _userAuthController = locator.get<UserAuthController>();
-    // Fetch users based on role
-    _fetchUsersCubit.fetchUsersBasedOnRole();
   }
 
   @override
@@ -68,7 +55,9 @@ class _LayoutState extends State<Layout> {
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   leading: Padding(
                       padding: const EdgeInsets.all(8),
-                      child: CircleAvatar(backgroundImage: NetworkImage(currentUser?.image ?? ""))),
+                      child: CircleAvatar(
+                          backgroundImage: NetworkImage(currentUser?.image ?? "", scale: 2),
+                          onBackgroundImageError: (_, __) => const AssetImage('assets/ic_launcher_foreground.png'))),
                   titleSpacing: 4,
                   centerTitle: false,
                   title: Text(
