@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,16 +47,26 @@ class _LayoutState extends State<Layout> {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           } else if (state is UserError) {
             return Scaffold(body: Center(child: Text('Error loading users: ${state.error}')));
-          } else if (state is UserLoaded) {
+          }
             return Scaffold(
                 appBar: AppBar(
                   elevation: 0,
                   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  leading: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: CircleAvatar(
-                          backgroundImage: NetworkImage(currentUser?.image ?? "", scale: 2),
-                          onBackgroundImageError: (_, __) => const AssetImage('assets/ic_launcher_foreground.png'))),
+                  leading: ClipOval(
+                    child: FadeInImage(
+                      image: NetworkImage(currentUser?.image ?? "images"),
+                      placeholder: const AssetImage('assets/ic_launcher_foreground.png'),
+                      imageErrorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'assets/ic_launcher_foreground.png',
+                          fit: BoxFit.cover,
+                        );
+                      },
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
+                    ),
+                  ),
                   titleSpacing: 4,
                   centerTitle: false,
                   title: Text(
@@ -78,10 +87,7 @@ class _LayoutState extends State<Layout> {
                     : widget.type == 'Student'
                         ? const StudentScreen()
                         : Center(child: Text('Unknown type: ${widget.type}')));
-          } else {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
-        },
       ),
     );
   }

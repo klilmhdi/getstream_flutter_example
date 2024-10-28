@@ -1,57 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 
 import '../../../data/models/user_model.dart';
 
-class StudentScreen extends StatelessWidget {
+class StudentScreen extends StatefulWidget {
   const StudentScreen({super.key});
+
+  @override
+  State<StudentScreen> createState() => _StudentScreenState();
+}
+
+class _StudentScreenState extends State<StudentScreen> {
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   context.read<FetchUsersCubit>().fetchUsersBasedOnRole();
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<FetchUsersCubit, FetchUsersState>(
-        builder: (context, state) {
-          if (state is UserLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is UserLoaded) {
-            final users = state.users;
-            if (users.isEmpty) {
-              return const Center(child: Text("No teachers found."));
-            }
-            return ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                UserModel teacher = users[index];
-                return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.deepPurple,
-                      child: Text(
-                        teacher.name.isNotEmpty ? teacher.name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white),
+      body: BlocProvider(
+        create: (context) => FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth)
+          ..fetchUsersBasedOnRole(),
+        child: BlocBuilder<FetchUsersCubit, FetchUsersState>(
+          builder: (context, state) {
+            if (state is UserLoading) {
+              print("State: UserLoading");
+              return const Center(child: CircularProgressIndicator());
+            } else if (state is UserLoaded) {
+              print("State: UserLoaded, Users: ${state.users}");
+              final users = state.users;
+              if (users.isEmpty) {
+                print("No users found in the UserLoaded state.");
+                return const Center(child: Text("No teachers found."));
+              }
+              return ListView.builder(
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  UserModel teacher = users[index];
+                  print("Rendering user: ${teacher.name}");
+                  return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.deepPurple,
+                        child: Text(
+                          teacher.name.isNotEmpty ? teacher.name[0].toUpperCase() : '?',
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-                    title: Text(teacher.name),
-                    subtitle: Text(teacher.email),
-                    // trailing: Text(teacher.role),
-                    trailing: IconButton(
-                      onPressed: () => _showJoinCallDialog(context, teacher.uid),
-                      icon: const Icon(Icons.meeting_room),
-                      color: Colors.blue,
-                    ));
-              },
-            );
-          } else if (state is UserError) {
-            return Center(child: Text("Error: ${state.error}"));
-          } else {
-            return const Center(child: Text("No data available."));
-          }
-        },
+                      title: Text(teacher.name),
+                      subtitle: Text(teacher.email),
+                      trailing: IconButton(
+                        onPressed: () => _showJoinCallDialog(context, teacher.uid),
+                        icon: const Icon(Icons.meeting_room),
+                        color: Colors.blue,
+                      ));
+                },
+              );
+            } else if (state is UserError) {
+              print("State: UserError, Error: ${state.error}");
+              return Center(child: Text("Error: ${state.error}"));
+            } else {
+              print("State: No data available.");
+              return const Center(child: Text("No data available."));
+            }
+          },
+        ),
       ),
     );
   }
 
-  /// Shows a dialog to confirm joining a call.
   void _showJoinCallDialog(BuildContext context, String teacherId) {
     showDialog(
       context: context,
@@ -73,7 +93,6 @@ class StudentScreen extends StatelessWidget {
       },
     );
   }
-
 // /// Initiates joining a call.
 // Future<void> _joinCall(BuildContext context, String teacherId) async {
 //   final callCubit = context.read<CallingsCubit>();

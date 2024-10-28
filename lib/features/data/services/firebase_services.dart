@@ -34,7 +34,7 @@ class FirebaseServices {
     final String? token = await initFcmToken();
     String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
 
-    await firestore.collection("users").doc(collectionName).collection(uid).doc(uid).set({
+    await firestore.collection("users").doc(uid).set({
       'userId': uid,
       'name': name,
       'email': email,
