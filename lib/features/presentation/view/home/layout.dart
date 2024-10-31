@@ -86,7 +86,8 @@ class _LayoutState extends State<Layout> {
                     ? const TeacherScreen()
                     : widget.type == 'Student'
                         ? const StudentScreen()
-                        : Center(child: Text('Unknown type: ${widget.type}')));
+                        : Center(child: Text('Unknown type: ${widget.type}')),
+            );
           }
       ),
     );

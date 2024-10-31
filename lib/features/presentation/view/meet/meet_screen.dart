@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
+import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/settings_menu.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/share_call_card.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
@@ -52,12 +53,9 @@ class _MeetScreenState extends State<MeetScreen> {
     final userAuthController = locator.get<UserAuthController>();
     final appPreferences = locator.get<AppPreferences>();
 
-    // return if the video user is not yet logged in.
     final currentUser = userAuthController.currentUser;
     if (currentUser == null) return;
 
-    // Connect the video user to the chat client if they are not already
-    // connected.
     if (_userChatRepo.currentUser == null) {
       final chatUID = md5.convert(utf8.encode(currentUser.id));
       await _userChatRepo.connectUser(
@@ -70,10 +68,8 @@ class _MeetScreenState extends State<MeetScreen> {
       );
     }
 
-    // Create and watch channel for the call.
     _channel = await _userChatRepo.createChannel(widget.call.id);
 
-    // Rebuild the widget to enable the chat button.
     if (mounted) setState(() {});
   }
 
@@ -101,13 +97,9 @@ class _MeetScreenState extends State<MeetScreen> {
     );
   }
 
-  // void showParticipants(BuildContext context) {
-  //   CallParticipantsRoute($extra: widget.call).push(context);
-  // }
-
-  // void showStats(BuildContext context) {
-  //   CallStatsRoute($extra: widget.call).push(context);
-  // }
+  void showParticipants(BuildContext context) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => CallParticipantsList(call: widget.call)));
+  }
 
   void toggleMoreMenu(BuildContext context) {
     setState(() {
@@ -134,6 +126,7 @@ class _MeetScreenState extends State<MeetScreen> {
           callContentBuilder: (BuildContext context, Call call, CallState callState) {
             return StreamCallContent(
               call: call,
+              // onLeaveCallTap: () async => await widget.call.leave(),
               callState: callState,
               layoutMode: _currentLayoutMode,
               pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
@@ -156,44 +149,30 @@ class _MeetScreenState extends State<MeetScreen> {
                         child: SettingsMenu(
                           call: call,
                           onReactionSend: (_) => setState(() => _moreMenuVisible = false),
-                          // onStatsPressed: () => setState(
-                          //       () {
-                          //     showStats(context);
-                          //     _moreMenuVisible = false;
-                          //   },
-                          // ),
                           onAudioOutputChange: (_) => setState(() => _moreMenuVisible = false),
                           onAudioInputChange: (_) => setState(() => _moreMenuVisible = false),
                         ),
                       ),
                     ],
-                    // if (!_moreMenuVisible && (call.state.valueOrNull?.otherParticipants.isEmpty ?? false))
-                    //   Positioned(
-                    //     bottom: 0,
-                    //     left: 0,
-                    //     right: 0,
-                    //     child: ShareCallCard(callId: call.id),
-                    //   )
                   ],
                 );
               },
               callAppBarBuilder: (context, call, callState) => CallAppBar(
-                call: call,
-                leadingWidth: 180,
-                leading: Row(children: [
-                  ToggleLayoutOption(
-                    onLayoutModeChanged: (layout) {
-                      setState(() {
-                        _currentLayoutMode = layout;
-                      });
-                    },
-                  ),
-                  if (call.state.valueOrNull?.localParticipant != null)
-                    FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
-                  ShareCallCard(callId: call.id)
-                ]),
-                title: CallDurationTitle(call: call)
-              ),
+                  call: call,
+                  leadingWidth: 180,
+                  leading: Row(children: [
+                    ToggleLayoutOption(
+                      onLayoutModeChanged: (layout) {
+                        setState(() {
+                          _currentLayoutMode = layout;
+                        });
+                      },
+                    ),
+                    if (call.state.valueOrNull?.localParticipant != null)
+                      FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
+                    ShareCallCard(callId: call.id)
+                  ]),
+                  title: CallDurationTitle(call: call)),
               callControlsBuilder: (BuildContext context, Call call, CallState callState) {
                 final localParticipant = callState.localParticipant!;
                 return Container(
@@ -231,11 +210,11 @@ class _MeetScreenState extends State<MeetScreen> {
                       ),
                       const Spacer(),
                       BadgedCallOption(
-                        callControlOption: const CallControlOption(
-                          icon: Icon(Icons.people),
-                          // onPressed: _channel != null //
-                          //     ? () => showParticipants(context)
-                          //     : null,
+                        callControlOption: CallControlOption(
+                          icon: const Icon(Icons.people),
+                          onPressed: _channel != null //
+                              ? () => showParticipants(context)
+                              : null,
                         ),
                         badgeCount: callState.callParticipants.length,
                       ),

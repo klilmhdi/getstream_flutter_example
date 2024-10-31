@@ -73,12 +73,15 @@ class _MainAppState extends State<MainApp> {
                   textDirection: TextDirection.ltr,
                   child: Center(child: Text('Error loading app')),
                 );
-              } else if (snapshot.hasData) {
-                return Layout(
-                    type: locator.get<UserAuthController>().currentUser!.role == 'admin' ? "Teacher" : "Student");
               }
-
-              return const RegisterScreen();
+              // Navigate based on the saved user’s role
+              final authController = locator.get<UserAuthController>();
+              final currentUser = authController.currentUser;
+              if (currentUser != null) {
+                return Layout(type: currentUser.role == 'admin' ? "Teacher" : "Student");
+              } else {
+                return const RegisterScreen();
+              }
             }
 
             return const SplashScreen();

@@ -29,6 +29,17 @@ class CallJoinedState extends CallingsState {
   List<Object?> get props => [call];
 }
 
+class ActiveCallsFetchedState extends CallingsState {
+  final List<Map<String, dynamic>> activeCalls;
+
+  const ActiveCallsFetchedState({required this.activeCalls});
+
+  @override
+  List<Object> get props => [activeCalls];
+}
+
+class CallEndedState extends CallingsState {}
+
 class CallErrorState extends CallingsState {
   final String message;
 

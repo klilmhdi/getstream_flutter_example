@@ -32,7 +32,7 @@ class FirebaseServices {
     required String role,
   }) async {
     final String? token = await initFcmToken();
-    String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
+    // String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
 
     await firestore.collection("users").doc(uid).set({
       'userId': uid,
@@ -45,6 +45,25 @@ class FirebaseServices {
       'isActive': true
     });
   }
+
+  ///==================== > Upload user data to FirebaseFirestore
+  // Future<void> uploadCallDataToFirebase(
+  //   String uid, {
+  //   required String callerId,
+  //   required String callingId,
+  //   required String callId,
+  //   required bool callIsActive,
+  // }) async {
+
+    // await firestore.collection("calls").doc(callId).set({
+    //   'callId': callId,
+    //   'callerId': callerId,
+    //   'callingId': callingId,
+    //   'createdAt': Timestamp.now(),
+    //   'isActive': callIsActive
+    // });
+  // }
+  //
 
   ///==================== > Other Methods (login, logout, etc.)
   Future<void> login({required String email, required String password}) async {
