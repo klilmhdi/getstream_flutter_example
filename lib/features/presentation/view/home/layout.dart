@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
-import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/view/auth/signin.dart';

@@ -6,10 +6,7 @@ import 'package:getstream_flutter_example/core/utils/consts/assets.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class CallDurationTitle extends StatefulWidget {
-  const CallDurationTitle({
-    super.key,
-    required this.call,
-  });
+  const CallDurationTitle({super.key, required this.call});
 
   final Call call;
 
@@ -27,10 +24,9 @@ class _CallDurationTitleState extends State<CallDurationTitle> {
     super.initState();
 
     widget.call.get().then((value) {
-      _startedAt = value.foldOrNull(
-              success: (callData) =>
-                  callData.data.metadata.session.startedAt ?? DateTime.now()) ??
-          DateTime.now();
+      _startedAt =
+          value.foldOrNull(success: (callData) => callData.data.metadata.session.startedAt ?? DateTime.now()) ??
+              DateTime.now();
 
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted) {
@@ -60,21 +56,15 @@ class _CallDurationTitleState extends State<CallDurationTitle> {
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(20),
       ),
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(10),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(
-            shieldCheck,
-            width: 20,
-          ),
+          SvgPicture.asset(shieldCheck, width: 20),
           const SizedBox(width: 8),
           Text(
-            '${_duration.inMinutes.toString().padLeft(2, '0')}:${_duration.inSeconds.remainder(60).toString().padLeft(2, '0')}',
-            style: videoTheme.textTheme.title3.apply(
-              color: Colors.grey,
-            ),
-          ),
+              '${_duration.inMinutes.toString().padLeft(2, '0')}:${_duration.inSeconds.remainder(60).toString().padLeft(2, '0')}',
+              style: videoTheme.textTheme.title3.apply(color: Colors.black87)),
         ],
       ),
     );

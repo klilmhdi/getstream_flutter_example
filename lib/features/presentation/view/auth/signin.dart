@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 
 // import 'package:getstream_flutter_example/core/di/injector.dart';
 // import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
@@ -9,6 +10,7 @@ import 'package:getstream_flutter_example/features/presentation/manage/auth/regi
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:stream_chat/src/client/client.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -79,21 +81,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             border: OutlineInputBorder(borderSide: BorderSide(color: CupertinoColors.black))),
                         validator: (value) => value!.isEmpty ? "Name is required" : null,
                       ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: emailController,
-                        style: const TextStyle(color: CupertinoColors.black),
-                        decoration: const InputDecoration(
-                            labelText: "Email",
-                            labelStyle: TextStyle(color: CupertinoColors.black),
-                            border: OutlineInputBorder(borderSide: BorderSide(color: CupertinoColors.black))),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value!.isEmpty) return "Email is required";
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return "Enter a valid email";
-                          return null;
-                        },
-                      ),
+                      // const SizedBox(height: 20),
+                      // TextFormField(
+                      //   controller: emailController,
+                      //   style: const TextStyle(color: CupertinoColors.black),
+                      //   decoration: const InputDecoration(
+                      //       labelText: "Email",
+                      //       labelStyle: TextStyle(color: CupertinoColors.black),
+                      //       border: OutlineInputBorder(borderSide: BorderSide(color: CupertinoColors.black))),
+                      //   keyboardType: TextInputType.emailAddress,
+                      //   validator: (value) {
+                      //     if (value!.isEmpty) return "Email is required";
+                      //     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return "Enter a valid email";
+                      //     return null;
+                      //   },
+                      // ),
                       const SizedBox(height: 20),
                       DropdownButtonFormField<String>(
                         value: userType,
@@ -129,11 +131,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     onPressed: () {
                                       if (formKey.currentState!.validate()) {
                                         final name = nameController.text.trim();
-                                        final email = emailController.text.trim();
+                                        final email = "${generateEmail().toString()}@gmail.com";
                                         const password = "Hello2024#";
                                         context.read<RegisterCubit>().registerUser(name, email, password, userType);
-                                        emailController.clear();
+                                        // emailController.clear();
                                         nameController.clear();
+                                        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Email: $email");
                                       }
                                     },
                                     child: const Text("Register",

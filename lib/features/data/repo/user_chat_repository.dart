@@ -21,7 +21,7 @@ class UserChatRepository {
   Future<void> disconnectUser() => chatClient.disconnectUser();
 
   Future<Channel> createChannel(String channelId) async {
-    final channel = chatClient.channel(CallConsts.messageChannelType, id: channelId);
+    final channel = chatClient.channel("videocall", id: channelId);
     await channel.watch();
     return channel;
   }

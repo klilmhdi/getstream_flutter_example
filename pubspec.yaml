@@ -17,6 +17,7 @@ dependencies:
   cached_network_image: ^3.4.1
   dart_jsonwebtoken: ^2.14.1
   dartz: ^0.10.1
+  device_info_plus: any
   equatable: ^2.0.5
   flutter_bloc: ^8.1.6
   flutter_callkit_incoming: ^2.0.4+2
@@ -53,7 +54,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  build_runner: ^2.4.6
+
+  build_runner: ^2.4.13
+  build_test: ^2.2.2
+  build_web_compilers: ^4.0.11
   envied_generator: ^0.5.4+1
   go_router_builder: ^2.3.1
   import_sorter: ^4.6.0

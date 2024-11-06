@@ -31,16 +31,16 @@
         android:label="getstream_flutter_example">
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:enableOnBackInvokedCallback="true"
             android:exported="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:supportsPictureInPicture="true"
+            android:enableOnBackInvokedCallback="true"
             android:hardwareAccelerated="true"
             android:launchMode="singleTop"
-            android:supportsPictureInPicture="true"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:windowSoftInputMode="adjustResize"
-            tools:targetApi="honeycomb">
+            tools:targetApi="n">
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues

@@ -42,34 +42,65 @@ class FirebaseServices {
       'role': role,
       'platform': kIsWeb ? "Web" : "Mobile",
       'createdAt': Timestamp.now(),
-      'isActive': true
+      'isActiveUser': true
     });
   }
 
-  ///==================== > Upload user data to FirebaseFirestore
-  // Future<void> uploadCallDataToFirebase(
-  //   String uid, {
-  //   required String callerId,
-  //   required String callingId,
-  //   required String callId,
-  //   required bool callIsActive,
-  // }) async {
+  ///==================== > Upload call data to FirebaseFirestore
+  Future<void> uploadCallDataToFirebase(
+    String uid, {
+    required String callerId,
+    required String callingId,
+    required String callId,
+    required bool callIsActive,
+  }) async {
+    await firestore.collection("calls").doc(callId).set({
+      'callId': callId,
+      'callerId': callerId,
+      'callingId': callingId,
+      'isActive': callIsActive,
+    });
+  }
 
-    // await firestore.collection("calls").doc(callId).set({
-    //   'callId': callId,
-    //   'callerId': callerId,
-    //   'callingId': callingId,
-    //   'createdAt': Timestamp.now(),
-    //   'isActive': callIsActive
-    // });
-  // }
-  //
+  /*
+  create update function for call
+    'createdAt': Timestamp.now(),
+    'startCallDuration': 0,
+    'endCallDuration': 0,
+   */
+
+  ///==================== > Get user data from FirebaseFirestore
+  Future<DocumentSnapshot> getUserDataFromFirebase(String uid) async {
+    return await firestore.collection("users").doc(uid).get();
+  }
+
+  Future<bool> checkIfCurrentUserIsTeacher() async {
+    try {
+      final userDoc =
+          await FirebaseServices().firestore.collection("users").doc(FirebaseServices().auth.currentUser?.uid).get();
+
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        final role = userData?['role'];
+        print("User role from Firestore: $role");
+        return role == "Teacher";
+      } else {
+        print("User document not found.");
+        return false;
+      }
+    } catch (e) {
+      print("Error fetching user role: $e");
+      return false;
+    }
+  }
 
   ///==================== > Other Methods (login, logout, etc.)
+  ///==================== > login
   Future<void> login({required String email, required String password}) async {
     await auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
+  ///==================== > logout
   Future<void> logout() async {
     try {
       User? user = auth.currentUser;
@@ -78,15 +109,7 @@ class FirebaseServices {
         DocumentSnapshot userDoc = await firestore.collection('users').doc(user.uid).get();
 
         if (userDoc.exists) {
-          String role = userDoc.get('role');
-          String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
-
-          await firestore
-              .collection('users')
-              .doc(collectionName)
-              .collection(user.uid)
-              .doc(user.uid)
-              .update({'isActive': false});
+          await firestore.collection('users').doc(user.uid).update({'isActiveUser': false});
           await auth.signOut();
         } else {
           print("User document does not exist.");
@@ -99,10 +122,5 @@ class FirebaseServices {
 
   Future<UserCredential> signUpWithEmail({required String email, required String password}) async {
     return await auth.createUserWithEmailAndPassword(email: email, password: password);
-  }
-
-  ///==================== > Get user data from FirebaseFirestore
-  Future<DocumentSnapshot> getUserDataFromFirebase(String uid) async {
-    return await firestore.collection("users").doc(uid).get();
   }
 }

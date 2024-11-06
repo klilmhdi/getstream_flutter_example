@@ -22,7 +22,15 @@ String sessionId = const Uuid().v4();
 const _chars = 'abcdefghijklmnopqrstuvwxyz1234567890';
 Random _rnd = Random();
 
-String generateCallId(int length) => String.fromCharCodes(Iterable.generate(length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
+String generateCallId(int length) =>
+    String.fromCharCodes(Iterable.generate(length, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
+
+/// generate username for email from random letters
+const _letter = 'abcdefghijklmnopqrstuvwxyz';
+Random _randomEmail = Random();
+
+String generateEmail() =>
+    String.fromCharCodes(Iterable.generate(10, (_) => _letter.codeUnitAt(_randomEmail.nextInt(_letter.length))));
 
 /// generate JWT
 String generateJwt({required String userId, required String secretKey, int expiryMinutes = 60}) {

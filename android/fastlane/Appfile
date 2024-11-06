@@ -1,0 +1,2 @@
+package_name("com.klilmhdi.getstream_flutter_example") # e.g. com.krausefx.app
+json_key_file("firebase-service-account.json")

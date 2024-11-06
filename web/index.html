@@ -28,46 +28,104 @@
     <script src="web/flutter_bootstrap.js" async></script>
 </head>
 <body>
+<!--<script>-->
+<!--    window.addEventListener('load', function(ev) {-->
+<!--      // Download main.dart.js-->
+<!--      FlutterLoader.load({-->
+<!--        serviceWorker: {-->
+<!--          serviceWorkerVersion: serviceWorkerVersion,-->
+<!--        }-->
+<!--      }).then(function(engineInitializer) {-->
+<!--        return engineInitializer.initializeEngine();-->
+<!--      }).then(function(appRunner) {-->
+<!--        return appRunner.runApp();-->
+<!--      });-->
+<!--    });-->
+
+<!--    // Register the service worker-->
+<!--  if ('serviceWorker' in navigator) {-->
+<!--    navigator.serviceWorker.register('/firebase-messaging-sw.js')-->
+<!--      .then(function(registration) {-->
+<!--        console.log('ServiceWorker registration successful with scope: ', registration.scope);-->
+
+<!--        // Only after the service worker is registered, initialize Firebase Messaging-->
+<!--        initializeFirebaseMessaging();-->
+<!--      })-->
+<!--      .catch(function(err) {-->
+<!--        console.log('ServiceWorker registration failed: ', err);-->
+<!--      });-->
+<!--  } else {-->
+<!--    console.log('ServiceWorker is not supported in this browser.');-->
+<!--  }-->
+
+<!--  function initializeFirebaseMessaging() {-->
+<!--    // Initialize Firebase Cloud Messaging here, after the service worker is registered-->
+<!--    const messaging = firebase.messaging();-->
+
+<!--    messaging.getToken({ vapidKey: 'BJ5rud-ytdfp0f2RNMkLFkgEkZSn-sN7cl1UMg9qT3ueo_KoADtX-pB9cOiYin7_zmS7MS94YG7AiLkiQtW0igU' }).then((token) => {-->
+<!--      console.log('FCM Token:', token);-->
+<!--    }).catch((err) => {-->
+<!--      console.log('FCM Token Error:', err);-->
+<!--    });-->
+<!--  }-->
+<!--</script>-->
 <script>
-    window.addEventListener('load', function(ev) {
-      // Download main.dart.js
-      FlutterLoader.load({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
+    // Define the serviceWorkerVersion variable
+    var serviceWorkerVersion = '1.0.0'; // Adjust version if needed
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        // Register Firebase messaging service worker
+        navigator.serviceWorker.register('/firebase-messaging-sw.js').then(function (registration) {
+          console.log('Firebase messaging Service Worker registered with scope:', registration.scope);
+
+          // Initialize Firebase Messaging after service worker registration
+          initializeFirebaseMessaging(registration);
+
+        }).catch(function (error) {
+          console.log('Firebase messaging service worker registration failed:', error);
+        });
+
+        // Register additional service worker
+        navigator.serviceWorker.register('sw.js').then(function (registration) {
+          console.log('Service Worker registration successful with scope:', registration.scope);
+        }).catch(function (error) {
+          console.log('Service Worker registration failed:', error);
+        });
+
+        // Load main.dart.js with Flutter loader
+        _flutter.loader.load({
+          serviceWorker: { serviceWorkerVersion: serviceWorkerVersion },
+        }).then(function (engineInitializer) {
+          engineInitializer.initializeEngine().then(function (appRunner) {
+            appRunner.runApp();
+          });
+        }).catch(function (error) {
+          console.error('Error loading the Flutter app:', error);
+        });
+      });
+    } else {
+      console.log('Service Workers are not supported in this browser.');
+    }
+
+    function initializeFirebaseMessaging(registration) {
+      // Initialize Firebase Cloud Messaging after the service worker is registered
+      const messaging = firebase.messaging();
+
+      messaging.getToken({
+        serviceWorkerRegistration: registration,
+        vapidKey: 'BJ5rud-ytdfp0f2RNMkLFkgEkZSn-sN7cl1UMg9qT3ueo_KoADtX-pB9cOiYin7_zmS7MS94YG7AiLkiQtW0igU'
+      }).then((token) => {
+        if (token) {
+          console.log('FCM Token:', token);
+          // You can store or send the token to your server here
+        } else {
+          console.log('No FCM token available. Request permission to generate one.');
         }
-      }).then(function(engineInitializer) {
-        return engineInitializer.initializeEngine();
-      }).then(function(appRunner) {
-        return appRunner.runApp();
+      }).catch((error) => {
+        console.log('An error occurred while retrieving the FCM token:', error);
       });
-    });
-
-    // Register the service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/firebase-messaging-sw.js')
-      .then(function(registration) {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-
-        // Only after the service worker is registered, initialize Firebase Messaging
-        initializeFirebaseMessaging();
-      })
-      .catch(function(err) {
-        console.log('ServiceWorker registration failed: ', err);
-      });
-  } else {
-    console.log('ServiceWorker is not supported in this browser.');
-  }
-
-  function initializeFirebaseMessaging() {
-    // Initialize Firebase Cloud Messaging here, after the service worker is registered
-    const messaging = firebase.messaging();
-
-    messaging.getToken({ vapidKey: 'BJ5rud-ytdfp0f2RNMkLFkgEkZSn-sN7cl1UMg9qT3ueo_KoADtX-pB9cOiYin7_zmS7MS94YG7AiLkiQtW0igU' }).then((token) => {
-      console.log('FCM Token:', token);
-    }).catch((err) => {
-      console.log('FCM Token Error:', err);
-    });
-  }
+    }
 </script>
 
 <!-- This script adds the flutter initialization JS code -->

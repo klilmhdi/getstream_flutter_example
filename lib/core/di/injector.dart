@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:getstream_flutter_example/core/utils/consts/log_config.dart';
-import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
 import 'package:getstream_flutter_example/features/data/repo/user_auth_repository.dart';
 import 'package:getstream_flutter_example/features/data/repo/user_chat_repository.dart';

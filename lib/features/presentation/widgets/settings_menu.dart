@@ -248,7 +248,7 @@ class SettingsMenuItem extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints.expand(height: 40),
         decoration: BoxDecoration(
-          color: CupertinoColors.systemBlue.darkElevatedColor,
+          color: CupertinoColors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.all(8),

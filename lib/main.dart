@@ -2,12 +2,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/bloc_observer.dart';
-import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
@@ -16,6 +18,7 @@ import 'package:getstream_flutter_example/features/presentation/manage/fetch_use
 import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:getstream_flutter_example/features/presentation/view/splash_screen.dart';
 import 'package:getstream_flutter_example/firebase_options.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide User;
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionState;
 import 'features/presentation/view/auth/signin.dart';
 
@@ -61,6 +64,27 @@ class _MainAppState extends State<MainApp> {
         BlocProvider<CallingsCubit>(create: (context) => CallingsCubit())
       ],
       child: MaterialApp(
+        builder: (context, child) =>
+            StreamChat(client: StreamChatClient("z3k88gbquy4a", logLevel: Level.INFO), child: child),
+        theme: ThemeData(
+          extensions: <ThemeExtension<dynamic>>[
+            StreamVideoTheme.dark().copyWith(
+              callControlsTheme: StreamCallControlsThemeData(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
+                ),
+                callReactions: callReactions,
+                backgroundColor: CupertinoColors.white,
+                elevation: 8,
+                padding: const EdgeInsets.all(14),
+                spacing: 4,
+                optionIconColor: Colors.black,
+                inactiveOptionIconColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
         home: FutureBuilder(
           future: _appLoader,
           builder: (context, snapshot) {

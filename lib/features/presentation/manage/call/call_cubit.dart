@@ -1,13 +1,12 @@
-import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/meet_screen.dart';
+import 'package:getstream_flutter_example/features/presentation/view/meet/ready_to_start_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
@@ -18,16 +17,12 @@ class CallingsCubit extends Cubit<CallingsState> {
 
   static CallingsCubit get(BuildContext context) => BlocProvider.of(context, listen: false);
 
-  // final _streamVideo = locator.get<StreamVideo>();
-  // final String _callId = generateCallId(10);
-
-  // final call = locator.get<StreamVideo>().makeCall(callType: StreamCallType.defaultType(), id: generateCallId(10));
-
   Call _makeCall(callId) {
     final call = locator.get<StreamVideo>().makeCall(callType: StreamCallType.defaultType(), id: callId);
     return call;
   }
 
+  // initial call
   Future<void> initiateCall(BuildContext context, teacherId) async {
     emit(CallLoadingState());
     try {
@@ -37,9 +32,10 @@ class CallingsCubit extends Cubit<CallingsState> {
         debugPrint("Call session ID: ${call.state.value.sessionId}");
         if (value.isSuccess) {
           debugPrint("Call successfully connected!");
-          FirebaseServices().firestore.collection("users").doc(teacherId).update({
+          FirebaseServices().firestore.collection("calls").doc(call.id).set({
             'callId': call.id,
             'teacherId': teacherId,
+            'studentId': null,
             'isActive': true,
           });
           emit(CallCreatedState(call: call));
@@ -65,6 +61,36 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
+  Future<void> readyToStartMeet(BuildContext context, String callId, String studentId) async {
+    emit(CallLoadingState());
+    final call = _makeCall(callId);
+
+    try {
+      FirebaseServices().firestore.collection("calls").doc(callId).update({
+        'studentId': studentId,
+      }).then((_) {
+        print("Firestore updated successfully for call ID: $callId");
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ReadyToStartScreen(
+                  onJoinCallPressed: (_) => context.read<CallingsCubit>().joinMeet(context, callId),
+                  call: call,
+                ),
+          ),
+        );
+      }).catchError((error) {
+        print("Error updating Firestore: $error");
+      });
+    } catch (e, s) {
+      debugPrint("Failed to join call: ${e.toString()}");
+      debugPrint("Stack trace: ${s.toString()}");
+      emit(CallErrorState(e.toString()));
+    }
+  }
+
+  // join to meet
   Future<void> joinMeet(BuildContext context, callId) async {
     emit(CallLoadingState());
 
@@ -85,26 +111,46 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
-  Future<void> fetchActiveCalls() async {
-    emit(CallLoadingState());
-    try {
-      final querySnapshot = await FirebaseServices()
-          .firestore
-          .collection("users")
-          .where("isActive", isEqualTo: true)
-          .where("role", isEqualTo: "Teacher")
-          .get();
+  // available calls from teacher
+  // Future<void> fetchActiveCalls() async {
+  //   emit(ActiveCallsLoadingState());
+  //   try {
+  //     final querySnapshot =
+  //         await FirebaseServices().firestore.collection("calls").where("isActiveNow", isEqualTo: true).get();
+  //
+  //     final activeCalls = querySnapshot.docs
+  //         .map((doc) => {
+  //               "callId": doc.id,
+  //               "teacherId": doc["teacherId"],
+  //               "studentId": doc["studentId"] ?? "No student assigned",
+  //               "isActiveNow": doc["isActiveNow"]
+  //             })
+  //         .toList();
+  //
+  //     if (activeCalls.isEmpty) {
+  //       emit(const CallErrorState("No active calls with callId found for teachers."));
+  //     } else {
+  //       emit(ActiveCallsFetchedState(activeCalls: activeCalls));
+  //     }
+  //   } catch (e) {
+  //     emit(ActiveCallsFailedState(error: "Failed to fetch active calls: $e"));
+  //   }
+  // }
 
-      final activeCalls = querySnapshot.docs
-          .where((doc) => doc.data().containsKey("callId"))
-          .map((doc) => {
-                "teacherId": doc.id,
-                "callId": doc["callId"],
-                "teacherName": doc["name"],
-                "rule": doc["role"],
-                "email": doc["email"],
-              })
-          .toList();
+  Future<void> fetchActiveCalls() async {
+    emit(ActiveCallsLoadingState());
+    try {
+      final querySnapshot =
+      await FirebaseServices().firestore.collection("calls").where("isActive", isEqualTo: true).get();
+
+      final activeCalls = querySnapshot.docs.map((doc) {
+        return {
+          "callId": doc.get("callId") ?? doc.id,
+          "teacherId": doc.get("teacherId") ?? "Unknown Teacher",
+          "studentId": doc.get("studentId") ?? "No student assigned",
+          "isActive": doc.get("isActive"),
+        };
+      }).toList();
 
       if (activeCalls.isEmpty) {
         emit(const CallErrorState("No active calls with callId found for teachers."));
@@ -112,32 +158,60 @@ class CallingsCubit extends Cubit<CallingsState> {
         emit(ActiveCallsFetchedState(activeCalls: activeCalls));
       }
     } catch (e) {
-      emit(CallErrorState("Failed to fetch active calls: $e"));
+      emit(CallErrorState("Failed to fetch active calls: ${e.toString()}"));
     }
   }
 
-  Future<void> endCall(BuildContext context, callId) async {
+  // end call via set isActive to false
+  // Future<void> endCall(BuildContext context, callId) async {
+  //   try {
+  //     final querySnapshot =
+  //     await FirebaseServices().firestore.collection("calls").where("callId", isEqualTo: callId).limit(1).get();
+  //
+  //     if (querySnapshot.docs.isNotEmpty) {
+  //       await FirebaseServices().firestore.collection("calls").doc(callId).update({
+  //         'callId': FieldValue.delete(),
+  //         'isActive': false,
+  //       });
+  //
+  //       emit(CallEndedState());
+  //       Navigator.pop(context);
+  //     } else {
+  //       emit(const CallErrorState("Teacher ID not found for the current call."));
+  //     }
+  //   } catch (e) {
+  //     emit(CallErrorState("Failed to end call: $e"));
+  //   }
+  // }
+  Future<void> endCall(BuildContext context, String callId) async {
     try {
-      final querySnapshot =
-          await FirebaseServices().firestore.collection("users").where("callId", isEqualTo: callId).limit(1).get();
+      // Query the call document by its 'callId' field
+      final querySnapshot = await FirebaseServices().firestore
+          .collection("calls")
+          .where("callId", isEqualTo: callId)
+          .limit(1)
+          .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        final teacherId = querySnapshot.docs.first.id;
-        await FirebaseServices().firestore.collection("users").doc(teacherId).update({
-          'callId': FieldValue.delete(),
+        final documentId = querySnapshot.docs.first.id;
+
+        // Update the document: set 'isActive' to false and remove 'callId' field
+        await FirebaseServices().firestore.collection("calls").doc(documentId).update({
           'isActive': false,
+          'callId': FieldValue.delete(),
         });
 
         emit(CallEndedState());
         Navigator.pop(context);
       } else {
-        emit(const CallErrorState("Teacher ID not found for the current call."));
+        emit(const CallErrorState("Call not found."));
       }
     } catch (e) {
       emit(CallErrorState("Failed to end call: $e"));
     }
   }
 
+  // need camera, microphone, and notifications permissions
   Future<void> _checkAndRequestPermissions(BuildContext context) async {
     final cameraStatus = await Permission.camera.request();
     final micStatus = await Permission.microphone.request();
@@ -148,6 +222,7 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
+  // permission dialog
   void _showPermissionDialog(BuildContext context, String permission) {
     showDialog(
       context: context,

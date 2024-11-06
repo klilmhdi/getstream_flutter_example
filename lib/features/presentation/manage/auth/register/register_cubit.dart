@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide UserInfo, User;
 import 'package:firebase_database/firebase_database.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
-import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/data/services/token_service.dart';
@@ -69,7 +69,9 @@ class RegisterCubit extends Cubit<RegisterState> {
           emit(RegisterSuccessState(user: User(info: user)));
         },
       );
-    } catch (e) {
+    } catch (e, s) {
+      print(e.toString());
+      print(s.toString());
       emit(RegisterFailedState("Registration failed. Please try again."));
     }
   }

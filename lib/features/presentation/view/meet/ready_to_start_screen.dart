@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
-import 'package:getstream_flutter_example/core/utils/consts/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
+import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
@@ -42,6 +44,37 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
     widget.onJoinCallPressed(options);
   }
 
+  Future _endCall() async {
+    print("Call end button pressed");
+
+    // Perform navigation, call leave, and track stopping actions in sequence
+    await Navigator.maybePop(context);
+    widget.call.reject();
+    widget.call.leave();
+
+    // Stop the tracks (ensuring they are stopped before checking the state)
+    await _cameraTrack?.stop();
+    await _microphoneTrack?.stop();
+
+    bool isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
+    if (isTeacher) {
+      try {
+        if (!mounted) return;
+        await context.read<CallingsCubit>().endCall(context, widget.call.id);
+        print("Call successfully ended in Firestore");
+        // showSuccessSnackBar("Success: isActive set to false", 4, context);
+      } catch (error) {
+        print("Failed to end call in Firestore: $error");
+        // showErrorSnackBar("Error ending call: ${error.toString()}", 4, context);
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
   @override
   void dispose() {
     _cameraTrack?.stop();
@@ -56,7 +89,6 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
   Widget build(BuildContext context) {
     final streamVideoTheme = StreamVideoTheme.of(context);
     final textTheme = streamVideoTheme.textTheme;
-    final colorTheme = streamVideoTheme.colorTheme;
     final currentUser = _userAuthController.currentUser;
 
     return Scaffold(
@@ -78,22 +110,7 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
               builder: (context, state) {
                 return IconButton(
                   icon: const Icon(Icons.call_end, color: Colors.red),
-                  onPressed: () {
-                    Navigator.maybePop(context).then((_) {
-                      widget.call.reject();
-                      widget.call.leave();
-                      _cameraTrack?.stop();
-                      _microphoneTrack?.stop();
-
-                      if (state is UserLoaded) {
-                        final isTeacher =
-                            state.users.any((user) => user.uid == currentUser!.id && user.role == "Teacher");
-                        if (isTeacher) {
-                          context.read<CallingsCubit>().endCall(context, widget.call.id);
-                        }
-                      }
-                    });
-                  },
+                  onPressed: () async => _endCall(),
                 );
               },
             ),
@@ -106,34 +123,34 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                const Icon(Icons.groups),
+                const Icon(Icons.groups, size: 30),
                 const SizedBox(height: 8),
                 Text('Check your call settings \nbefore joining',
                     textAlign: TextAlign.center,
-                    style: textTheme.title1.copyWith(fontWeight: FontWeight.bold, color: colorTheme.textHighEmphasis)),
+                    style: textTheme.title1.copyWith(fontWeight: FontWeight.bold, color: CupertinoColors.black)),
                 const SizedBox(height: 16),
                 Center(
-                  // child: StreamLobbyVideo(
-                  //     call: widget.call,
-                  //     onMicrophoneTrackSet: (track) => _microphoneTrack = track,
-                  //     onCameraTrackSet: (track) => _cameraTrack = track)
-                  child: StreamLobbyVideo(
-                      call: widget.call,
-                      onMicrophoneTrackSet: (track) {
-                        if (track != null) {
-                          _microphoneTrack = track;
-                        } else {
-                          print("Microphone track is null, cannot proceed.");
-                        }
-                      },
-                      onCameraTrackSet: (track) {
-                        if (track != null) {
-                          _cameraTrack = track;
-                        } else {
-                          print("Camera track is null, cannot proceed.");
-                        }
-                      }),
-                ),
+                    child: StreamLobbyVideo(
+                        call: widget.call,
+                        onMicrophoneTrackSet: (track) => _microphoneTrack = track,
+                        onCameraTrackSet: (track) => _cameraTrack = track)
+                    // child: StreamLobbyVideo(
+                    //     call: widget.call,
+                    //     onMicrophoneTrackSet: (track) {
+                    //       if (track != null) {
+                    //         _microphoneTrack = track;
+                    //       } else {
+                    //         print("Microphone track is null, cannot proceed.");
+                    //       }
+                    //     },
+                    //     onCameraTrackSet: (track) {
+                    //       if (track != null) {
+                    //         _cameraTrack = track;
+                    //       } else {
+                    //         print("Camera track is null, cannot proceed.");
+                    //       }
+                    //     }),
+                    ),
                 const SizedBox(height: 24),
                 Padding(
                     padding: const EdgeInsets.all(16),
