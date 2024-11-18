@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
+import 'package:getstream_flutter_example/features/data/models/calling_model.dart';
+import 'package:getstream_flutter_example/features/data/models/meetings_model.dart';
 import 'package:uuid/uuid.dart';
 
 class FirebaseServices {
@@ -47,19 +49,18 @@ class FirebaseServices {
   }
 
   ///==================== > Upload call data to FirebaseFirestore
-  Future<void> uploadCallDataToFirebase(
-    String uid, {
-    required String callerId,
-    required String callingId,
-    required String callId,
-    required bool callIsActive,
-  }) async {
-    await firestore.collection("calls").doc(callId).set({
-      'callId': callId,
-      'callerId': callerId,
-      'callingId': callingId,
-      'isActive': callIsActive,
+  Future<void> uploadCallDataToFirebase(CallingModel calling) async {
+    await firestore.collection("calls").doc(calling.callID).set({
+      'callId': calling.callID,
+      'callerId': calling.callerID,
+      'callingId': calling.callingID,
+      'isActiveCall': calling.isActiveCall,
     });
+  }
+
+  ///==================== > Upload meet data to FirebaseFirestore
+  Future<void> uploadMeetDataToFirebase(MeetingModel meeting) async {
+    await firestore.collection("meets").doc(meeting.meetID).set(meeting.toMap());
   }
 
   /*
@@ -74,6 +75,7 @@ class FirebaseServices {
     return await firestore.collection("users").doc(uid).get();
   }
 
+  ///==================== > check if current user is teacher
   Future<bool> checkIfCurrentUserIsTeacher() async {
     try {
       final userDoc =

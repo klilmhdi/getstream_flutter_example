@@ -37,6 +37,7 @@ Future<void> _backgroundVoipCallHandler() async {
       logPriority: Priority.verbose,
       muteAudioWhenInBackground: true,
       muteVideoWhenInBackground: true,
+      keepConnectionsAliveWhenInBackground: true,
     ),
     pushNotificationManagerProvider: StreamVideoPushNotificationManager.create(
       iosPushProvider: const StreamVideoPushProvider.apn(
@@ -46,7 +47,7 @@ Future<void> _backgroundVoipCallHandler() async {
         name: 'flutter-firebase',
       ),
       pushParams: const StreamVideoPushParams(
-        appName: "Ecample",
+        appName: "GetStream Flutter Example",
         ios: IOSParams(iconName: 'IconMask'),
       ),
       registerApnDeviceToken: true,
@@ -157,34 +158,6 @@ StreamChatClient _initStreamChat(String apiKey) {
   return streamChatClient;
 }
 
-// StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, TokenLoader? tokenLoader}) {
-//   final streamVideoClient = StreamVideo(
-//     apiKey,
-//     user: user,
-//     tokenLoader: tokenLoader,
-//     options: const StreamVideoOptions(
-//       logPriority: Priority.verbose,
-//       muteAudioWhenInBackground: true,
-//       muteVideoWhenInBackground: true,
-//     ),
-//     pushNotificationManagerProvider: StreamVideoPushNotificationManager.create(
-//       iosPushProvider: const StreamVideoPushProvider.apn(
-//         name: 'flutter-apn',
-//       ),
-//       androidPushProvider: const StreamVideoPushProvider.firebase(
-//         name: 'flutter-firebase',
-//       ),
-//       pushParams: const StreamVideoPushParams(
-//         appName: "Example",
-//         ios: IOSParams(iconName: 'IconMask'),
-//       ),
-//       backgroundVoipCallHandler: _backgroundVoipCallHandler,
-//       registerApnDeviceToken: true,
-//     ),
-//   );
-//
-//   return streamVideoClient;
-// }
 StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, TokenLoader? tokenLoader}) {
   if (initialToken == null || initialToken.isEmpty) {
     print("Invalid token: Token is missing or expired.");
@@ -200,6 +173,7 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
       logPriority: Priority.verbose,
       muteAudioWhenInBackground: true,
       muteVideoWhenInBackground: true,
+      keepConnectionsAliveWhenInBackground: true,
     ),
     pushNotificationManagerProvider: StreamVideoPushNotificationManager.create(
       iosPushProvider: const StreamVideoPushProvider.apn(
@@ -209,7 +183,7 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
         name: 'flutter-firebase',
       ),
       pushParams: const StreamVideoPushParams(
-        appName: "Example",
+        appName: "GetStream Flutter Example",
         ios: IOSParams(iconName: 'IconMask'),
       ),
       backgroundVoipCallHandler: _backgroundVoipCallHandler,

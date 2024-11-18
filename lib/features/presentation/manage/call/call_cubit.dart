@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
+import 'package:getstream_flutter_example/features/data/models/calling_model.dart';
+import 'package:getstream_flutter_example/features/data/models/meetings_model.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/meet_screen.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/ready_to_start_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
+
+import '../../view/home/layout.dart';
 
 part 'call_state.dart';
 
@@ -17,27 +22,131 @@ class CallingsCubit extends Cubit<CallingsState> {
 
   static CallingsCubit get(BuildContext context) => BlocProvider.of(context, listen: false);
 
+  /// Basic function to (create / make) a (call / meet) in general
   Call _makeCall(callId) {
     final call = locator.get<StreamVideo>().makeCall(callType: StreamCallType.defaultType(), id: callId);
     return call;
   }
 
-  // initial call
-  Future<void> initiateCall(BuildContext context, teacherId) async {
+  /// General settings (For student and teacher)
+  // 1- in lobby screen (navigate for ready to start screen)
+  Future<void> readyToStartMeet(BuildContext context, String meetId, String studentId, String studentName) async {
+    emit(CallLoadingState());
+    final call = _makeCall(meetId);
+    try {
+      FirebaseServices()
+          .firestore
+          .collection("meets")
+          .doc(meetId)
+          .update({'receiverID': studentId, 'receiverName': studentName}).then((_) {
+        print("Firestore updated successfully for call ID: $meetId");
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReadyToStartScreen(
+              onJoinCallPressed: (_) => context.read<CallingsCubit>().joinMeet(context, meetId),
+              call: call,
+            ),
+          ),
+        );
+      }).catchError((error) {
+        print("Error updating Firestore: $error");
+      });
+    } catch (e, s) {
+      debugPrint("Failed to join call: ${e.toString()}");
+      debugPrint("Stack trace: ${s.toString()}");
+      emit(CallErrorState(e.toString()));
+    }
+  }
+
+  // 2- join to meet
+  Future<void> joinMeet(BuildContext context, callId, {CallConnectOptions? connectOptions}) async {
+    emit(CallLoadingState());
+
+    final call = _makeCall(callId);
+    try {
+      await _checkAndRequestPermissions(context).then((value) async {
+        await call.join(connectOptions: connectOptions).then((_) {
+          if (context.mounted) {
+            emit(MeetingJoinedState(call: call, connectOptions: connectOptions!));
+            Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => MeetScreen(call: call, connectOptions: connectOptions)),
+                (route) => false);
+          }
+        });
+      });
+    } catch (e, s) {
+      debugPrint("Failed to join call: ${e.toString()}");
+      debugPrint("Stack trace: ${s.toString()}");
+      emit(CallErrorState(e.toString()));
+    }
+  }
+
+  /// Teacher settings
+  // 1- initial meet
+  Future<void> initiateMeet(BuildContext context, String teacherId, String teacherName) async {
+    emit(MeetingLoadingState());
+    try {
+      final meet = _makeCall(generateCallId(8));
+      await meet.getOrCreate(ringing: false, video: true).then((value) {
+        debugPrint("Meet state after creation: ${meet.state.value.status}");
+        debugPrint("Meet session ID: ${meet.state.value.sessionId}");
+        if (value.isSuccess) {
+          debugPrint("Meet successfully connected!");
+          final meeting = MeetingModel(
+              meetID: meet.id,
+              creatorID: teacherId,
+              creatorName: teacherName,
+              receiverID: "",
+              receiverName: "",
+              isActiveMeet: true);
+          // FirebaseServices().firestore.collection("meets").doc().set();
+          FirebaseServices().uploadMeetDataToFirebase(meeting);
+          emit(MeetingCreatedState(meet: meet));
+        } else if (meet.state.value.status.isIdle) {
+          debugPrint("Meeting Status: ${meet.state.value.status}");
+          emit(const MeetingErrorState("Meeting is IDLE"));
+        } else {
+          debugPrint("Meeting failed: ${meet.state.value.status}");
+          emit(const MeetingErrorState("Call is failed"));
+        }
+      }).catchError((onError) {
+        debugPrint('Error joining or creating Meeting: $onError');
+        emit(const MeetingErrorState("Catch Error"));
+      }).onError((e, stk) {
+        debugPrint('Error joining or creating Meeting: $e');
+        debugPrint("Error joining or creating Meeting: ${stk.toString()}");
+        emit(const MeetingErrorState("On Error"));
+      });
+    } catch (e, s) {
+      debugPrint("Meeting initiation error: ${e.toString()}");
+      debugPrint("Stack trace: ${s.toString()}");
+      emit(MeetingErrorState("Failed to initiate Meeting: ${s.toString()}"));
+    }
+  }
+
+  // 2- initial call
+  Future<void> initiateCall(BuildContext context, teacherId, teacherName, studentId, studentName) async {
     emit(CallLoadingState());
     try {
-      final call = _makeCall(generateCallId(10));
-      await call.getOrCreate(ringing: false, video: true).then((value) {
+      final call = _makeCall(generateCallId(4));
+      // call.state.value.isRingingFlow;
+      await call.getOrCreate(ringing: true, video: true, memberIds: [teacherId, studentId]).then((value) {
         debugPrint("Call state after creation: ${call.state.value.status}");
         debugPrint("Call session ID: ${call.state.value.sessionId}");
         if (value.isSuccess) {
           debugPrint("Call successfully connected!");
-          FirebaseServices().firestore.collection("calls").doc(call.id).set({
-            'callId': call.id,
-            'teacherId': teacherId,
-            'studentId': null,
-            'isActive': true,
-          });
+          final calling = CallingModel(
+              callID: call.id,
+              callerID: teacherId,
+              callerName: teacherName,
+              callingID: studentId,
+              callingName: studentName,
+              isActiveCall: true,
+              isAccepted: false,
+              isRinging: false);
+          FirebaseServices().firestore.collection("calls").doc(call.id).set(calling.toMap());
           emit(CallCreatedState(call: call));
         } else if (call.state.value.status.isIdle) {
           debugPrint("Call Status: ${call.state.value.status}");
@@ -61,136 +170,20 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
-  Future<void> readyToStartMeet(BuildContext context, String callId, String studentId) async {
-    emit(CallLoadingState());
-    final call = _makeCall(callId);
-
-    try {
-      FirebaseServices().firestore.collection("calls").doc(callId).update({
-        'studentId': studentId,
-      }).then((_) {
-        print("Firestore updated successfully for call ID: $callId");
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ReadyToStartScreen(
-                  onJoinCallPressed: (_) => context.read<CallingsCubit>().joinMeet(context, callId),
-                  call: call,
-                ),
-          ),
-        );
-      }).catchError((error) {
-        print("Error updating Firestore: $error");
-      });
-    } catch (e, s) {
-      debugPrint("Failed to join call: ${e.toString()}");
-      debugPrint("Stack trace: ${s.toString()}");
-      emit(CallErrorState(e.toString()));
-    }
-  }
-
-  // join to meet
-  Future<void> joinMeet(BuildContext context, callId) async {
-    emit(CallLoadingState());
-
-    final call = _makeCall(callId);
-    try {
-      await _checkAndRequestPermissions(context).then((value) async {
-        await call.join().then((_) {
-          if (context.mounted) {
-            emit(CallJoinedState(call: call));
-            Navigator.push(context, MaterialPageRoute(builder: (context) => MeetScreen(call: call)));
-          }
-        });
-      });
-    } catch (e, s) {
-      debugPrint("Failed to join call: ${e.toString()}");
-      debugPrint("Stack trace: ${s.toString()}");
-      emit(CallErrorState(e.toString()));
-    }
-  }
-
-  // available calls from teacher
-  // Future<void> fetchActiveCalls() async {
-  //   emit(ActiveCallsLoadingState());
+  // 3- create a call with ringtone
+  // Future<void> createCall(String teacherId, String studentId, String teacherName) async {
   //   try {
-  //     final querySnapshot =
-  //         await FirebaseServices().firestore.collection("calls").where("isActiveNow", isEqualTo: true).get();
   //
-  //     final activeCalls = querySnapshot.docs
-  //         .map((doc) => {
-  //               "callId": doc.id,
-  //               "teacherId": doc["teacherId"],
-  //               "studentId": doc["studentId"] ?? "No student assigned",
-  //               "isActiveNow": doc["isActiveNow"]
-  //             })
-  //         .toList();
-  //
-  //     if (activeCalls.isEmpty) {
-  //       emit(const CallErrorState("No active calls with callId found for teachers."));
-  //     } else {
-  //       emit(ActiveCallsFetchedState(activeCalls: activeCalls));
-  //     }
   //   } catch (e) {
-  //     emit(ActiveCallsFailedState(error: "Failed to fetch active calls: $e"));
+  //     print("Error creating call: $e");
   //   }
   // }
-
-  Future<void> fetchActiveCalls() async {
-    emit(ActiveCallsLoadingState());
-    try {
-      final querySnapshot =
-      await FirebaseServices().firestore.collection("calls").where("isActive", isEqualTo: true).get();
-
-      final activeCalls = querySnapshot.docs.map((doc) {
-        return {
-          "callId": doc.get("callId") ?? doc.id,
-          "teacherId": doc.get("teacherId") ?? "Unknown Teacher",
-          "studentId": doc.get("studentId") ?? "No student assigned",
-          "isActive": doc.get("isActive"),
-        };
-      }).toList();
-
-      if (activeCalls.isEmpty) {
-        emit(const CallErrorState("No active calls with callId found for teachers."));
-      } else {
-        emit(ActiveCallsFetchedState(activeCalls: activeCalls));
-      }
-    } catch (e) {
-      emit(CallErrorState("Failed to fetch active calls: ${e.toString()}"));
-    }
-  }
-
-  // end call via set isActive to false
-  // Future<void> endCall(BuildContext context, callId) async {
-  //   try {
-  //     final querySnapshot =
-  //     await FirebaseServices().firestore.collection("calls").where("callId", isEqualTo: callId).limit(1).get();
-  //
-  //     if (querySnapshot.docs.isNotEmpty) {
-  //       await FirebaseServices().firestore.collection("calls").doc(callId).update({
-  //         'callId': FieldValue.delete(),
-  //         'isActive': false,
-  //       });
-  //
-  //       emit(CallEndedState());
-  //       Navigator.pop(context);
-  //     } else {
-  //       emit(const CallErrorState("Teacher ID not found for the current call."));
-  //     }
-  //   } catch (e) {
-  //     emit(CallErrorState("Failed to end call: $e"));
-  //   }
-  // }
+  // 4- end call via set isActive to false
   Future<void> endCall(BuildContext context, String callId) async {
     try {
       // Query the call document by its 'callId' field
-      final querySnapshot = await FirebaseServices().firestore
-          .collection("calls")
-          .where("callId", isEqualTo: callId)
-          .limit(1)
-          .get();
+      final querySnapshot =
+          await FirebaseServices().firestore.collection("calls").where("callId", isEqualTo: callId).limit(1).get();
 
       if (querySnapshot.docs.isNotEmpty) {
         final documentId = querySnapshot.docs.first.id;
@@ -211,7 +204,115 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
-  // need camera, microphone, and notifications permissions
+  // 5- end meet via set isActive to false
+  Future<void> endMeetFromTeacher(BuildContext context, String meetId, Call call) async {
+    try {
+      // End the call first
+      if (call.state.value.status.isActive) {
+        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>The call is ended");
+        await call.end();
+        await call.reject(reason: CallRejectReason.cancel());
+      }
+
+      await FirebaseServices().firestore.collection("meets").doc(meetId).update({
+        'creatorID': '',
+        'creatorName': '',
+        'isActiveMeet': false,
+        'meetID': '',
+        'receiverID': '',
+        'receiverName': '',
+      }).then(
+        (value) {
+          print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>The value is set false");
+          showSuccessSnackBar("Change values success", 3, context);
+        },
+      );
+
+      emit(CallEndedState());
+      print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>End call and change the active meets to false success");
+      // } else {
+      //   emit(const CallErrorState("Meet not found."));
+      // }
+
+      // Navigate back to the teacher's layout after the Firestore update
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      emit(CallErrorState("Failed to end meet: $e"));
+    }
+  }
+
+  /// Student settings
+  // 1- fetch active meets
+  Future<void> fetchActiveMeets() async {
+    emit(ActiveMeetsLoadingState());
+    try {
+      final querySnapshot =
+          // await FirebaseFirestore.instance.collection("meets").where("isActiveMeet", isEqualTo: true).get();
+          await FirebaseFirestore.instance.collection("meets").get();
+
+      final activeMeets = querySnapshot.docs.map((doc) {
+        return MeetingModel.fromMap(doc.data());
+      }).toList();
+
+      if (activeMeets.isEmpty) {
+        emit(const CallErrorState("No active meets found."));
+      } else {
+        emit(ActiveMeetsFetchedState(activeMeets: activeMeets));
+      }
+    } catch (e) {
+      emit(CallErrorState("Failed to fetch active meets: ${e.toString()}"));
+    }
+  }
+
+  // 2- leave meet in student side
+  Future<void> leaveMeetForStudent(String meetId, Call call) async {
+    try {
+      // Ensure the student cleanly leaves without affecting the teacher
+      // await call.leave();
+      // await FirebaseServices().firestore.collection("meets").doc(meetId).update({
+      //   'receiverID': '',
+      //   'receiverName': '',
+      // });
+
+      // Check if the teacher has ended the call by verifying the `isActiveMeet` status in Firestore
+      final docSnapshot = await FirebaseServices().firestore.collection("meets").doc(meetId).get();
+
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        final isActiveMeet = data?['isActiveMeet'] ?? true;
+
+        // If the teacher has already ended the meet, end the call
+        print(">>>>>>>>????????>>>>>>>>>>??????????>>>>>>>>>>>>>>?????????????>>>>>>>???????>>>>>$isActiveMeet");
+        if (isActiveMeet == false) {
+          print("Teacher has already ended the meet. Ending the call for the student.");
+          await call.end();
+          await call.leave();
+          await call.reject(reason: CallRejectReason.cancel());
+          emit(CallEndedState());
+        } else {
+          print("Teacher has not ended the meet. Student will leave the call.");
+          await call.leave();
+          await FirebaseServices().firestore.collection("meets").doc(meetId).update({
+            'receiverID': '',
+            'receiverName': '',
+          });
+          emit(CallEndedState());
+        }
+        // emit(CallEndedState());
+      }
+    } catch (e) {
+      emit(CallErrorState("Failed to leave meet: $e"));
+    }
+  }
+
+  /// private functions
+  // * need camera, microphone, and notifications permissions
   Future<void> _checkAndRequestPermissions(BuildContext context) async {
     final cameraStatus = await Permission.camera.request();
     final micStatus = await Permission.microphone.request();
@@ -222,7 +323,7 @@ class CallingsCubit extends Cubit<CallingsState> {
     }
   }
 
-  // permission dialog
+  // * permission dialog
   void _showPermissionDialog(BuildContext context, String permission) {
     showDialog(
       context: context,

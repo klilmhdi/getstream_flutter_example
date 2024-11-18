@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:getstream_flutter_example/features/data/models/user_model.dart';
 import 'package:meta/meta.dart';
 
@@ -99,6 +100,21 @@ class FetchUsersCubit extends Cubit<FetchUsersState> {
     } catch (e) {
       print("General error: ${e.toString()}");
       emit(UserError("An error occurred while fetching users."));
+    }
+  }
+
+  // fetch student for teacher
+  Future<void> fetchStudents() async {
+    emit(LoadingStudentFetchState());
+    try {
+      final querySnapshot = await firestore.collection("users").where('role', isEqualTo: 'Student').get();
+      final students = querySnapshot.docs.map((doc) => doc.data()).toList();
+      print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>$students");
+      emit(SuccessStudentFetchState(students: students));
+    } catch (e, s) {
+      debugPrint(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+      debugPrint(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackTrace: ${s.toString()}");
+      emit(FailedStudentFetchState(message: e.toString()));
     }
   }
 }

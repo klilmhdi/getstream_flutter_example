@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
@@ -34,24 +35,59 @@ class MeetScreen extends StatefulWidget {
   State<MeetScreen> createState() => _MeetScreenState();
 }
 
-class _MeetScreenState extends State<MeetScreen> {
+class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
   late final _userChatRepo = locator.get<UserChatRepository>();
 
   Channel? _channel;
   ParticipantLayoutMode _currentLayoutMode = ParticipantLayoutMode.grid;
   bool _moreMenuVisible = false;
+  bool _isPip = false;
+  RtcLocalAudioTrack? _microphoneTrack;
+  RtcLocalCameraTrack? _cameraTrack;
 
   @override
   void initState() {
     super.initState();
+    // initialize chat channel connection
     _connectChatChannel();
-    // _checkUserRoleAndNavigate();
+
+    WidgetsBinding.instance.addObserver(this);
+    // Use the connectOptions to configure the call
+    final options = widget.connectOptions ?? const CallConnectOptions();
+    if (options.camera == TrackOption.enabled()) {
+      widget.call.setCameraEnabled(enabled: true);
+    } else {
+      widget.call.setCameraEnabled(enabled: false);
+    }
+
+    if (options.microphone == TrackOption.enabled()) {
+      widget.call.setMicrophoneEnabled(enabled: true);
+    } else {
+      widget.call.setMicrophoneEnabled(enabled: false);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      setState(() {
+        _isPip = true; // Activate PiP when app is minimized
+      });
+    } else if (state == AppLifecycleState.resumed) {
+      setState(() {
+        _isPip = false; // Deactivate PiP when app is foregrounded
+      });
+    }
+
+    super.didChangeAppLifecycleState(state);
   }
 
   @override
   void dispose() {
     widget.call.leave();
     _userChatRepo.disconnectUser();
+    WidgetsBinding.instance.removeObserver(this);
+    _isPip = false; // Deactivate PiP when app is foregrounded
     super.dispose();
   }
 
@@ -91,275 +127,207 @@ class _MeetScreenState extends State<MeetScreen> {
         body: StreamCallContainer(
           call: widget.call,
           callConnectOptions: widget.connectOptions,
-          // onCancelCallTap: () async {
-          //   print("I'm in cancel call tap in call appbar");
-          //   await widget.call.end();
-          //   await widget.call.leave();
-          //   await widget.call.reject(reason: CallRejectReason.cancel()).then((_) async {
-          //     final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-          //     if (isTeacher) {
-          //       print("Is teacher = true");
-          //       if (!mounted) return;
-          //       await context.read<CallingsCubit>().endCall(context, widget.call.id);
-          //       print("Call successfully ended in Firestore");
-          //       Navigator.pushAndRemoveUntil(
-          //           context, MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')), (route) {
-          //         return false;
-          //       });
-          //     } else {
-          //       print("Is teacher = false");
-          //       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
-          //               (route) {
-          //             return false;
-          //           });
-          //     }
-          //     await widget.call.leave();
-          //   });
-          // },
-          pictureInPictureConfiguration: PictureInPictureConfiguration(
-              enablePictureInPicture: true,
-              androidPiPConfiguration: AndroidPictureInPictureConfiguration(
-                callPictureInPictureBuilder: (context, call, callState) {
-                  final currentUser = locator.get<UserAuthController>().currentUser;
-                  return Container(
-                    color: Colors.black,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            "In Call",
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            currentUser?.name ?? "Unknown Caller",
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          const SizedBox(height: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              // Example: add code to end the call
-                              call.end();
-                            },
-                            child: const Text("End Call"),
+          pictureInPictureConfiguration: const PictureInPictureConfiguration(
+            enablePictureInPicture: true,
+          ),
+          callContentBuilder: (BuildContext context, Call call, CallState callState) {
+            return Stack(
+              children: [
+                StreamPictureInPictureUiKitView(call: widget.call),
+                StreamCallContent(
+                  call: call,
+                  onBackPressed: () => StreamPictureInPictureUiKitView(call: widget.call),
+                  callState: callState,
+                  layoutMode: _currentLayoutMode,
+                  pictureInPictureConfiguration: PictureInPictureConfiguration(
+                      enablePictureInPicture: true,
+                      iOSPiPConfiguration: const IOSPictureInPictureConfiguration(
+                        ignoreLocalParticipantVideo: false,
+                      ),
+                      androidPiPConfiguration: AndroidPictureInPictureConfiguration(
+                        callPictureInPictureBuilder: (context, call, callState) {
+                          final currentUser = locator.get<UserAuthController>().currentUser;
+                          return Container(
+                            color: Colors.black,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    "In Call",
+                                    style: TextStyle(color: Colors.white, fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    currentUser?.name ?? "Unknown Caller",
+                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      await call.end();
+                                    },
+                                    child: const Text("End Call"),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      )),
+                  callParticipantsBuilder: (context, call, callState) {
+                    return Stack(
+                      children: [
+                        StreamCallParticipants(
+                          call: call,
+                          participants: callState.callParticipants,
+                          layoutMode: _currentLayoutMode,
+                        ),
+                        if (_moreMenuVisible) ...[
+                          GestureDetector(
+                              onTap: () => setState(() => _moreMenuVisible = false),
+                              child: Container(color: Colors.black12)),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: SettingsMenu(
+                              call: call,
+                              onReactionSend: (_) => setState(() => _moreMenuVisible = false),
+                              onAudioOutputChange: (_) => setState(() => _moreMenuVisible = false),
+                              onAudioInputChange: (_) => setState(() => _moreMenuVisible = false),
+                            ),
                           ),
                         ],
-                      ),
-                    ),
-                  );
-                },
-              )),
-          callContentBuilder: (BuildContext context, Call call, CallState callState) {
-            return StreamCallContent(
-              call: call,
-              onLeaveCallTap: () async {
-                print("Initiating onLeaveCallTap...");
-
-                // Check the user role first and decide navigation
-                try {
-                  final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-                  print("User role checked: Is teacher? $isTeacher");
-
-                  if (isTeacher) {
-                    print("Navigating to Teacher layout...");
-                    if (!mounted) return;
-                    await context.read<CallingsCubit>().endCall(context, widget.call.id);
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')),
-                      (route) => false,
+                      ],
                     );
-                  } else {
-                    print("Navigating to Student layout...");
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
-                      (route) => false,
-                    );
-                  }
-
-                  // End and leave call after navigation decision
-                  await widget.call.end();
-                  await widget.call.leave();
-                } catch (e) {
-                  print("Error in onLeaveCallTap: $e");
-                }
-              },
-              callState: callState,
-              layoutMode: _currentLayoutMode,
-              pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
-              callParticipantsBuilder: (context, call, callState) {
-                return Stack(
-                  children: [
-                    StreamCallParticipants(
-                      call: call,
-                      participants: callState.callParticipants,
-                      layoutMode: _currentLayoutMode,
-                    ),
-                    if (_moreMenuVisible) ...[
-                      GestureDetector(
-                          onTap: () => setState(() => _moreMenuVisible = false),
-                          child: Container(color: Colors.black12)),
-                      Positioned(
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        child: SettingsMenu(
-                          call: call,
-                          onReactionSend: (_) => setState(() => _moreMenuVisible = false),
-                          onAudioOutputChange: (_) => setState(() => _moreMenuVisible = false),
-                          onAudioInputChange: (_) => setState(() => _moreMenuVisible = false),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
-              // calling appbar
-              callAppBarBuilder: (context, call, callState) => CallAppBar(
-                  backgroundColor: Colors.black,
-                  call: call,
-                  showLeaveCallAction: true,
-                  // onLeaveCallTap: () async {
-                  //   print("I'm in cancel call tap in call appbar");
-                  //
-                  //   // Wrap endAllCalls method to prevent MissingPluginException
-                  //   await widget.call.end();
-                  //   await widget.call.leave();
-                  //   try {
-                  //     await widget.call.reject(reason: CallRejectReason.cancel()).then((_) async {
-                  //       final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-                  //       if (isTeacher) {
-                  //         print("Is teacher = true");
-                  //         if (!mounted) return;
-                  //         await context.read<CallingsCubit>().endCall(context, widget.call.id);
-                  //         Navigator.pushAndRemoveUntil(
-                  //             context, MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')), (route) {
-                  //           return false;
-                  //         });
-                  //       } else {
-                  //         print("Is teacher = false");
-                  //         await widget.call.leave();
-                  //         Navigator.pushAndRemoveUntil(
-                  //             context, MaterialPageRoute(builder: (context) => const Layout(type: 'Student')), (route) {
-                  //           return false;
-                  //         });
-                  //       }
-                  //     });
-                  //   } catch (e, s) {
-                  //     print("Error ending call or navigating: $e");
-                  //     print("Error ending call or navigating: ${s.toString()}");
-                  //   }
-                  // },
-                  onLeaveCallTap: () async {
-                    print("Initiating onLeaveCallTap...");
-
-                    // Step 1: Check user role and decide navigation
-                    try {
-                      final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-                      print("User role checked: Is teacher? $isTeacher");
-
-                      if (isTeacher) {
-                        print("Navigating to Teacher layout...");
-                        if (!mounted) return;
-                        await context.read<CallingsCubit>().endCall(context, widget.call.id);
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')),
-                          (route) => false,
-                        );
-                      } else {
-                        print("Navigating to Student layout...");
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
-                          (route) => false,
-                        );
-                      }
-                    } catch (e) {
-                      print("Error in role check or navigation: $e");
-                    }
-
-                    // Step 2: Reject call if it's active
-                    try {
-                      if (widget.call.state.value.status.isActive) {
-                        await widget.call.reject(reason: CallRejectReason.cancel());
-                      }
-                    } catch (e) {
-                      print("Error rejecting the call: $e");
-                    }
-
-                    // Step 3: End and leave the call safely
-                    try {
-                      await widget.call.end();
-                      await widget.call.leave();
-                    } catch (e) {
-                      print("Error ending or leaving the call: $e");
-                    }
                   },
-                  leadingWidth: 180,
-                  leading: Row(children: [
-                    ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
-                    if (call.state.valueOrNull?.localParticipant != null)
-                      FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
-                    ShareCallCard(callId: call.id)
-                  ]),
-                  title: CallDurationTitle(call: call)),
-              // bottom buttons controllers
-              callControlsBuilder: (BuildContext context, Call call, CallState callState) {
-                final localParticipant = callState.localParticipant!;
-                return Container(
-                  padding: const EdgeInsets.only(top: 16, left: 8),
-                  color: Colors.black,
-                  child: SafeArea(
-                    child: Row(children: [
-                      // options
-                      CallControlOption(
-                          icon: Icon(Icons.more_vert, color: _moreMenuVisible ? Colors.white : Colors.black),
-                          backgroundColor: _moreMenuVisible ? Colors.deepPurple : Colors.white,
-                          onPressed: () => _toggleMoreMenu(context)),
-                      ToggleScreenShareOption(
-                        call: call,
-                        localParticipant: localParticipant,
-                        screenShareConstraints: const ScreenShareConstraints(
-                          useiOSBroadcastExtension: true,
-                        ),
-                        enabledScreenShareBackgroundColor: Colors.deepPurple,
-                        disabledScreenShareIcon: Icons.screen_share,
-                        enabledScreenShareIconColor: Colors.white,
+                  callAppBarBuilder: (context, call, callState) => CallAppBar(
+                    backgroundColor: Colors.black,
+                    call: call,
+                    showLeaveCallAction: true,
+                    onLeaveCallTap: () async {
+                      print("Initiating onLeaveCallTap...");
+                      await _cameraTrack?.stop();
+                      await _microphoneTrack?.stop();
+                      try {
+                        final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
+                        if (widget.call.state.value.status.isActive) {
+                          if (isTeacher) {
+                            print("Navigating to Teacher layout...");
+                            await context
+                                .read<CallingsCubit>()
+                                .endMeetFromTeacher(context, widget.call.id, widget.call);
+                          } else {
+                            print("Navigating to Student layout...");
+                            if (!mounted) return;
+                            await context.read<CallingsCubit>().leaveMeetForStudent(widget.call.id, widget.call).then(
+                              (value) {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
+                                  (route) => false,
+                                );
+                              },
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        print("Error in role check or navigation: $e");
+                      }
+
+                      try {
+                        if (widget.call.state.value.status.isActive) {
+                          await widget.call.reject(reason: CallRejectReason.cancel());
+                        }
+                      } catch (e) {
+                        print("Error rejecting the call: $e");
+                      }
+
+                      try {
+                        await widget.call.end();
+                        await widget.call.leave();
+                      } catch (e) {
+                        print("Error ending or leaving the call: $e");
+                      }
+                    },
+                    leadingWidth: 180,
+                    leading: Row(children: [
+                      ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
+                      if (call.state.valueOrNull?.localParticipant != null)
+                        FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
+                      // ShareCallCard(callId: call.id),
+                      IconButton(
+                        icon: const Icon(Icons.picture_in_picture),
+                        onPressed: () {
+                          _isPip = true;
+                        },
                       ),
-                      ToggleMicrophoneOption(
-                        call: call,
-                        localParticipant: localParticipant,
-                        disabledMicrophoneBackgroundColor: Colors.red,
-                        disabledMicrophoneIconColor: Colors.white,
-                      ),
-                      ToggleCameraOption(
-                        call: call,
-                        localParticipant: localParticipant,
-                        disabledCameraBackgroundColor: Colors.red,
-                        disabledCameraIconColor: Colors.white,
-                      ),
-                      const Spacer(),
-                      BadgedCallOption(
-                        callControlOption: CallControlOption(
-                          icon: const Icon(Icons.people),
-                          onPressed: _channel != null ? () => _showParticipants(context) : null,
-                        ),
-                        badgeCount: callState.callParticipants.length,
-                      ),
-                      BadgedCallOption(
-                        callControlOption: CallControlOption(
-                          icon: const Icon(Icons.question_answer),
-                          onPressed: _channel != null ? () => _showChat(context) : null,
-                        ),
-                        badgeCount: _channel?.state?.unreadCount ?? 0,
-                      )
                     ]),
+                    title: CallDurationTitle(
+                      call: widget.call,
+                      onJoinCall: () async {
+                        final participants = call.state.valueOrNull?.callParticipants;
+                        return participants != null && participants.length > 1;
+                      },
+                    ),
                   ),
-                );
-              },
+                  // bottom buttons controllers
+                  callControlsBuilder: (BuildContext context, Call call, CallState callState) {
+                    final localParticipant = callState.localParticipant!;
+                    return Container(
+                      padding: const EdgeInsets.only(top: 16, left: 8),
+                      color: Colors.black,
+                      child: SafeArea(
+                        child: Row(children: [
+                          // options
+                          CallControlOption(
+                              icon: Icon(Icons.more_vert, color: _moreMenuVisible ? Colors.white : Colors.black),
+                              backgroundColor: _moreMenuVisible ? Colors.deepPurple : Colors.white,
+                              onPressed: () => _toggleMoreMenu(context)),
+                          ToggleScreenShareOption(
+                            call: call,
+                            localParticipant: localParticipant,
+                            screenShareConstraints: const ScreenShareConstraints(
+                              useiOSBroadcastExtension: true,
+                            ),
+                            enabledScreenShareBackgroundColor: Colors.deepPurple,
+                            disabledScreenShareIcon: Icons.screen_share,
+                            enabledScreenShareIconColor: Colors.white,
+                          ),
+                          ToggleMicrophoneOption(
+                            call: call,
+                            localParticipant: localParticipant,
+                            disabledMicrophoneBackgroundColor: Colors.red,
+                            disabledMicrophoneIconColor: Colors.white,
+                          ),
+                          ToggleCameraOption(
+                            call: call,
+                            localParticipant: localParticipant,
+                            disabledCameraBackgroundColor: Colors.red,
+                            disabledCameraIconColor: Colors.white,
+                          ),
+                          const Spacer(),
+                          BadgedCallOption(
+                            callControlOption: CallControlOption(
+                              icon: const Icon(Icons.people),
+                              onPressed: _channel != null ? () => _showParticipants(context) : null,
+                            ),
+                            badgeCount: callState.callParticipants.length,
+                          ),
+                          BadgedCallOption(
+                            callControlOption: CallControlOption(
+                              icon: const Icon(Icons.question_answer),
+                              onPressed: _channel != null ? () => _showChat(context) : null,
+                            ),
+                            badgeCount: _channel?.state?.unreadCount ?? 0,
+                          )
+                        ]),
+                      ),
+                    );
+                  },
+                ),
+              ],
             );
           },
         ),
@@ -419,6 +387,44 @@ class _MeetScreenState extends State<MeetScreen> {
         return false;
       });
     }
+  }
+
+  _customPiP({
+    required Call call,
+    required VoidCallback onResume,
+  }) {
+    return Positioned(
+      bottom: 20,
+      right: 20,
+      child: GestureDetector(
+        onTap: onResume, // Return to full-screen call
+        child: Container(
+          width: 150,
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  "In Call",
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Text(
+                  "Tap to Resume",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _handleTeacherDialog(context) {}

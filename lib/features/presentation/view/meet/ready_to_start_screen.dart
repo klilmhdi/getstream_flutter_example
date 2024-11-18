@@ -28,29 +28,35 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
 
   final _userAuthController = locator.get<UserAuthController>();
 
-  void joinCallPressed() {
+  // join meet function
+  void joinMeetPressed() {
     var options = const CallConnectOptions();
 
     final cameraTrack = _cameraTrack;
+    final microphoneTrack = _microphoneTrack;
     if (cameraTrack != null) {
       options = options.copyWith(camera: TrackOption.enabled());
+    } else {
+      options = options.copyWith(camera: TrackOption.disabled());
     }
 
-    final microphoneTrack = _microphoneTrack;
     if (microphoneTrack != null) {
       options = options.copyWith(microphone: TrackOption.enabled());
+    } else {
+      options = options.copyWith(microphone: TrackOption.disabled());
     }
 
-    widget.onJoinCallPressed(options);
+    context.read<CallingsCubit>().joinMeet(context, widget.call.id, connectOptions: options);
   }
 
+  // end meet function
   Future _endCall() async {
     print("Call end button pressed");
 
     // Perform navigation, call leave, and track stopping actions in sequence
-    await Navigator.maybePop(context);
-    widget.call.reject();
-    widget.call.leave();
+    // await Navigator.maybePop(context);
+    // widget.call.reject();
+    // widget.call.leave();
 
     // Stop the tracks (ensuring they are stopped before checking the state)
     await _cameraTrack?.stop();
@@ -60,13 +66,16 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
     if (isTeacher) {
       try {
         if (!mounted) return;
-        await context.read<CallingsCubit>().endCall(context, widget.call.id);
+        await context.read<CallingsCubit>().endMeetFromTeacher(context, widget.call.id, widget.call);
         print("Call successfully ended in Firestore");
         // showSuccessSnackBar("Success: isActive set to false", 4, context);
       } catch (error) {
         print("Failed to end call in Firestore: $error");
         // showErrorSnackBar("Error ending call: ${error.toString()}", 4, context);
       }
+    } else {
+      // await context.read<CallingsCubit>().leaveMeetForStudent(widget.call.id);
+      Navigator.pop(context);
     }
   }
 
@@ -125,7 +134,7 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
               children: [
                 const Icon(Icons.groups, size: 30),
                 const SizedBox(height: 8),
-                Text('Check your call settings \nbefore joining',
+                Text('Check your meeting settings \nbefore joining',
                     textAlign: TextAlign.center,
                     style: textTheme.title1.copyWith(fontWeight: FontWeight.bold, color: CupertinoColors.black)),
                 const SizedBox(height: 16),
@@ -133,28 +142,11 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
                     child: StreamLobbyVideo(
                         call: widget.call,
                         onMicrophoneTrackSet: (track) => _microphoneTrack = track,
-                        onCameraTrackSet: (track) => _cameraTrack = track)
-                    // child: StreamLobbyVideo(
-                    //     call: widget.call,
-                    //     onMicrophoneTrackSet: (track) {
-                    //       if (track != null) {
-                    //         _microphoneTrack = track;
-                    //       } else {
-                    //         print("Microphone track is null, cannot proceed.");
-                    //       }
-                    //     },
-                    //     onCameraTrackSet: (track) {
-                    //       if (track != null) {
-                    //         _cameraTrack = track;
-                    //       } else {
-                    //         print("Camera track is null, cannot proceed.");
-                    //       }
-                    //     }),
-                    ),
+                        onCameraTrackSet: (track) => _cameraTrack = track)),
                 const SizedBox(height: 24),
                 Padding(
                     padding: const EdgeInsets.all(16),
-                    child: StreamButton.active(label: 'Start a call', onPressed: joinCallPressed)),
+                    child: StreamButton.active(label: 'Start a meeting', onPressed: joinMeetPressed)),
                 const SizedBox(height: 56),
               ],
             ),

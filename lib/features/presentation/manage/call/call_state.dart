@@ -9,6 +9,7 @@ abstract class CallingsState extends Equatable {
 
 class CallInitial extends CallingsState {}
 
+// calling states
 class CallLoadingState extends CallingsState {}
 
 class CallCreatedState extends CallingsState {
@@ -20,13 +21,22 @@ class CallCreatedState extends CallingsState {
   List<Object?> get props => [call];
 }
 
-class CallJoinedState extends CallingsState {
-  final Call call;
+class IncomingCallState extends CallingsState {
+  final Map<String, dynamic> callData;
 
-  const CallJoinedState({required this.call});
+  const IncomingCallState({required this.callData});
+}
 
-  @override
-  List<Object?> get props => [call];
+class CallAcceptedState extends CallingsState {
+  final String callId;
+
+  const CallAcceptedState({required this.callId});
+}
+
+class CallRejectedState extends CallingsState {
+  final String callId;
+
+  const CallRejectedState({required this.callId});
 }
 
 class CallEndedState extends CallingsState {}
@@ -40,21 +50,55 @@ class CallErrorState extends CallingsState {
   List<Object?> get props => [message];
 }
 
-class ActiveCallsLoadingState extends CallingsState {}
+// meeting states
+class MeetingLoadingState extends CallingsState {}
 
-class ActiveCallsFetchedState extends CallingsState {
-  final List<Map<String, dynamic>> activeCalls;
+class MeetingCreatedState extends CallingsState {
+  final Call meet;
 
-  const ActiveCallsFetchedState({required this.activeCalls});
+  const MeetingCreatedState({required this.meet});
 
   @override
-  List<Object> get props => [activeCalls];
+  List<Object?> get props => [meet];
 }
 
-class ActiveCallsFailedState extends CallingsState {
+class MeetingJoinedState extends CallingsState {
+  final Call call;
+  final CallConnectOptions? connectOptions;
+
+  const MeetingJoinedState({required this.call, required this.connectOptions});
+
+  @override
+  List<Object?> get props => [call, connectOptions];
+}
+
+class MeetingEndedState extends CallingsState {}
+
+class MeetingErrorState extends CallingsState {
+  final String message;
+
+  const MeetingErrorState(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+// active meets states
+class ActiveMeetsLoadingState extends CallingsState {}
+
+class ActiveMeetsFetchedState extends CallingsState {
+  final List<MeetingModel> activeMeets;
+
+  const ActiveMeetsFetchedState({required this.activeMeets});
+
+  @override
+  List<Object> get props => [activeMeets];
+}
+
+class ActiveMeetsFailedState extends CallingsState {
   final String error;
 
-  const ActiveCallsFailedState({required this.error});
+  const ActiveMeetsFailedState({required this.error});
 
   @override
   List<Object> get props => [error];
