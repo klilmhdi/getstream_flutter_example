@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
@@ -37,7 +38,16 @@ class _TeacherScreenState extends State<TeacherScreen> {
       },
     );
 
+    AppConsumers().observeCallKitEvents(context);
     super.initState();
+  }
+
+  _makeCall(context, {required String studentName}) {}
+
+  @override
+  void dispose() {
+    AppConsumers().compositeSubscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -81,11 +91,18 @@ class _TeacherScreenState extends State<TeacherScreen> {
                             color: student['isActiveUser'] == true ? CupertinoColors.activeGreen : Colors.redAccent),
                         title: Text("${student['name']}"),
                         subtitle: Text(student['email'] ?? 'No Email'),
+                        // trailing: student['isActiveUser'] == true
+                        //     ? IconButton(
+                        //         icon: const Icon(Icons.call),
+                        //         onPressed: () => _makeCall(context, studentName: student['name']),
+                        //       )
+                        //     : const Icon(
+                        //         Icons.call_end,
+                        //         color: Colors.red,
+                        //       ),
                         trailing: IconButton(
                           icon: const Icon(Icons.call),
-                          onPressed: () {
-                            // _makeCall(context, student['name']);
-                          },
+                          onPressed: () => _makeCall(context, studentName: student['name']),
                         ),
                       );
                     },

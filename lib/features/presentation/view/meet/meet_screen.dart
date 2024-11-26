@@ -1,20 +1,19 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
-import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/chat_sheet.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/settings_menu.dart';
-import 'package:getstream_flutter_example/features/presentation/widgets/share_call_card.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide User;
+// import 'dart:js' as js;
 
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/controllers/user_auth_controller.dart';
@@ -44,6 +43,7 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
   bool _isPip = false;
   RtcLocalAudioTrack? _microphoneTrack;
   RtcLocalCameraTrack? _cameraTrack;
+  final _isTeacher = FirebaseServices().checkIfCurrentUserIsTeacher();
 
   @override
   void initState() {
@@ -69,7 +69,9 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
       setState(() {
         _isPip = true; // Activate PiP when app is minimized
       });
@@ -92,48 +94,67 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _connectChatChannel() async {
-    final userAuthController = locator.get<UserAuthController>();
-    final appPreferences = locator.get<AppPreferences>();
+    try {
+      final userAuthController = locator.get<UserAuthController>();
+      final appPreferences = locator.get<AppPreferences>();
 
-    final currentUser = userAuthController.currentUser;
-    if (currentUser == null) return;
+      final currentUser = userAuthController.currentUser;
+      if (currentUser == null) {
+        debugPrint("No current user found");
+        return;
+      }
 
-    if (_userChatRepo.currentUser == null) {
-      final chatUID = md5.convert(utf8.encode(currentUser.id));
-      await _userChatRepo.connectUser(
-        User(
-          id: chatUID.toString(),
-          name: currentUser.name,
-          image: currentUser.image,
-        ),
-        appPreferences.environment,
-      );
+      if (_userChatRepo.currentUser == null) {
+        final chatUID = md5.convert(utf8.encode(currentUser.id));
+        await _userChatRepo
+            .connectUser(
+          User(
+            id: chatUID.toString(),
+            name: currentUser.name,
+            image: currentUser.image,
+          ),
+          appPreferences.environment,
+        )
+            .then((_) {
+          debugPrint("User connected successfully");
+        }).catchError((error, stacktrace) {
+          debugPrint("Error connecting user: $error\n$stacktrace");
+        });
+      }
+
+      _channel = await _userChatRepo.createChannel(widget.call.id).catchError((error) {
+        debugPrint("Error creating channel: $error");
+      });
+
+      if (_channel == null) {
+        debugPrint("Channel creation failed");
+      } else {
+        debugPrint("Channel successfully created: ${_channel!.id}");
+      }
+
+      if (mounted) setState(() {});
+    } catch (e, stacktrace) {
+      debugPrint("Error in _connectChatChannel: $e\n$stacktrace");
     }
-
-    _channel = await _userChatRepo.createChannel(widget.call.id);
-
-    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     // ignore: deprecated_member_use
     return WillPopScope(
-      onWillPop: () async {
-        return !Navigator.of(context).userGestureInProgress;
-      },
+      onWillPop: () async => !Navigator.of(context).userGestureInProgress,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         body: StreamCallContainer(
           call: widget.call,
           callConnectOptions: widget.connectOptions,
-          pictureInPictureConfiguration: const PictureInPictureConfiguration(
-            enablePictureInPicture: true,
-          ),
+          pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
           callContentBuilder: (BuildContext context, Call call, CallState callState) {
             return Stack(
               children: [
+                // Able PIP
                 StreamPictureInPictureUiKitView(call: widget.call),
+                // Stream Call Content
                 StreamCallContent(
                   call: call,
                   onBackPressed: () => StreamPictureInPictureUiKitView(call: widget.call),
@@ -164,9 +185,9 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                                   ),
                                   const SizedBox(height: 8),
                                   ElevatedButton(
-                                    onPressed: () async {
-                                      await call.end();
-                                    },
+                                    onPressed: _leaveCall,
+                                    style: const ButtonStyle(
+                                        shape: WidgetStatePropertyAll(CircleBorder(side: BorderSide()))),
                                     child: const Text("End Call"),
                                   ),
                                 ],
@@ -202,75 +223,27 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                       ],
                     );
                   },
+                  // appbar controllers
                   callAppBarBuilder: (context, call, callState) => CallAppBar(
                     backgroundColor: Colors.black,
                     call: call,
                     showLeaveCallAction: true,
-                    onLeaveCallTap: () async {
-                      print("Initiating onLeaveCallTap...");
-                      await _cameraTrack?.stop();
-                      await _microphoneTrack?.stop();
-                      try {
-                        final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-                        if (widget.call.state.value.status.isActive) {
-                          if (isTeacher) {
-                            print("Navigating to Teacher layout...");
-                            await context
-                                .read<CallingsCubit>()
-                                .endMeetFromTeacher(context, widget.call.id, widget.call);
-                          } else {
-                            print("Navigating to Student layout...");
-                            if (!mounted) return;
-                            await context.read<CallingsCubit>().leaveMeetForStudent(widget.call.id, widget.call).then(
-                              (value) {
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
-                                  (route) => false,
-                                );
-                              },
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        print("Error in role check or navigation: $e");
-                      }
-
-                      try {
-                        if (widget.call.state.value.status.isActive) {
-                          await widget.call.reject(reason: CallRejectReason.cancel());
-                        }
-                      } catch (e) {
-                        print("Error rejecting the call: $e");
-                      }
-
-                      try {
-                        await widget.call.end();
-                        await widget.call.leave();
-                      } catch (e) {
-                        print("Error ending or leaving the call: $e");
-                      }
-                    },
+                    onLeaveCallTap: _leaveCall,
                     leadingWidth: 180,
                     leading: Row(children: [
                       ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
-                      if (call.state.valueOrNull?.localParticipant != null)
-                        FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
-                      // ShareCallCard(callId: call.id),
-                      IconButton(
-                        icon: const Icon(Icons.picture_in_picture),
-                        onPressed: () {
-                          _isPip = true;
-                        },
-                      ),
+                      if (!kIsWeb) FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
                     ]),
-                    title: CallDurationTitle(
-                      call: widget.call,
-                      onJoinCall: () async {
-                        final participants = call.state.valueOrNull?.callParticipants;
-                        return participants != null && participants.length > 1;
-                      },
-                    ),
+                    title: call.state.valueOrNull!.callParticipants.length > 1
+                        ? CallDurationTitle(
+                            call: widget.call,
+                            onJoinCall: () async {
+                              // final participants = call.state.valueOrNull?.callParticipants;
+                              // return participants != null && participants.length > 1;
+                              return callState.callParticipants.length > 1;
+                            },
+                          )
+                        : const WaitingJoinMeetWidget(),
                   ),
                   // bottom buttons controllers
                   callControlsBuilder: (BuildContext context, Call call, CallState callState) {
@@ -335,7 +308,78 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _leaveCall() async {
+    print("Initiating onLeaveCallTap...");
+    await _cameraTrack?.stop();
+    await _microphoneTrack?.stop();
+    try {
+      if (widget.call.state.value.status.isActive) {
+        if (await _isTeacher) {
+          print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Navigating to Teacher layout...");
+          await context
+              .read<CallingsCubit>()
+              .endMeetFromTeacher(context, widget.call.id, widget.call)
+              .then((value) async {
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Leave from student...");
+            await context.read<CallingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
+          });
+        } else {
+          print("Navigating to Student layout...");
+          if (!mounted) return;
+          await context.read<CallingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
+        }
+      }
+    } catch (e) {
+      print("Error in role check or navigation: $e");
+    }
+
+    try {
+      if (widget.call.state.value.status.isActive) {
+        await widget.call.reject(reason: CallRejectReason.cancel());
+      }
+    } catch (e) {
+      print("Error rejecting the call: $e");
+    }
+
+    try {
+      await widget.call.end();
+      await widget.call.leave();
+    } catch (e) {
+      print("Error ending or leaving the call: $e");
+    }
+  }
+
+  // void _disableWebPiP() => js.context.callMethod('exitPictureInPicture', []);
+
+  // void _showChat(BuildContext context) {
+  //   showModalBottomSheet<dynamic>(
+  //     context: context,
+  //     showDragHandle: true,
+  //     isScrollControlled: true,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(
+  //         top: Radius.circular(16),
+  //       ),
+  //     ),
+  //     builder: (_) {
+  //       final size = MediaQuery.sizeOf(context);
+  //       final viewInsets = MediaQuery.viewInsetsOf(context);
+  //
+  //       return AnimatedContainer(
+  //         duration: const Duration(milliseconds: 150),
+  //         height: size.height * 0.6 + viewInsets.bottom,
+  //         padding: EdgeInsets.only(bottom: viewInsets.bottom),
+  //         child: ChatBottomSheet(channel: _channel!),
+  //       );
+  //     },
+  //   );
+  // }
+
   void _showChat(BuildContext context) {
+    if (_channel == null || _channel!.state == null) {
+      debugPrint("Chat channel is not initialized or state is null");
+      return;
+    }
     showModalBottomSheet<dynamic>(
       context: context,
       showDragHandle: true,
@@ -374,62 +418,38 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
 
   void _toggleMoreMenu(BuildContext context) => setState(() => _moreMenuVisible = !_moreMenuVisible);
 
-  Future<void> _checkUserRoleAndNavigate() async {
-    final isTeacher = await FirebaseServices().checkIfCurrentUserIsTeacher();
-    if (isTeacher) {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Layout(type: 'Teacher')),
-          (route) {
-        return false;
-      });
-    } else {
-      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
-          (route) {
-        return false;
-      });
-    }
-  }
-
-  _customPiP({
-    required Call call,
-    required VoidCallback onResume,
-  }) {
-    return Positioned(
-      bottom: 20,
-      right: 20,
-      child: GestureDetector(
-        onTap: onResume, // Return to full-screen call
-        child: Container(
-          width: 150,
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Text(
-                  "In Call",
-                  style: TextStyle(color: Colors.white, fontSize: 14),
+  _customPiP({required Call call, required VoidCallback onResume}) => Positioned(
+        bottom: 20,
+        right: 20,
+        child: GestureDetector(
+          onTap: onResume, // Return to full-screen call
+          child: Container(
+            width: 150,
+            height: 100,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Text(
+                    "In Call",
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
                 ),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Text(
-                  "Tap to Resume",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Text(
+                    "Tap to Resume",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _handleTeacherDialog(context) {}
-
-  void _handleStudentDialog(context) {}
+      );
 }
 
 /*

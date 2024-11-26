@@ -20,7 +20,7 @@ class StreamButton extends StatelessWidget {
       label: label,
       icon: icon,
       onPressed: onPressed,
-      backgroundColor: Colors.blueAccent,
+      backgroundColor: Colors.deepPurple,
     );
   }
 

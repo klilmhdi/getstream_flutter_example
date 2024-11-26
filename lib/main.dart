@@ -30,6 +30,7 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   Future<void>? _appLoader;
+
   // final Connectivity _connectivity = Connectivity();
 
   @override
@@ -39,7 +40,7 @@ class _MainAppState extends State<MainApp> {
       // ..initializeServices(context)
       ..initPushNotificationManagerIfAvailable(context)
       ..consumeIncomingCall(context);
-      // ..initPushNotificationManagerIfAvailable();
+    // ..initPushNotificationManagerIfAvailable();
   }
 
   @override
@@ -65,7 +66,8 @@ class _MainAppState extends State<MainApp> {
         BlocProvider<RegisterCubit>(create: (context) => RegisterCubit()),
         BlocProvider<FetchUsersCubit>(
             create: (context) => FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth)
-              ..fetchUsersBasedOnRole()..fetchStudents()),
+              ..fetchUsersBasedOnRole()
+              ..fetchStudents()),
         BlocProvider<CallingsCubit>(create: (context) => CallingsCubit())
       ],
       child: MaterialApp(

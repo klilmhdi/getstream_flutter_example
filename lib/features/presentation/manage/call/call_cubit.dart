@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+// import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
@@ -21,6 +25,8 @@ class CallingsCubit extends Cubit<CallingsState> {
   CallingsCubit() : super(CallInitial());
 
   static CallingsCubit get(BuildContext context) => BlocProvider.of(context, listen: false);
+
+  StreamSubscription? callkitSubscription;
 
   /// Basic function to (create / make) a (call / meet) in general
   Call _makeCall(callId) {
@@ -132,7 +138,7 @@ class CallingsCubit extends Cubit<CallingsState> {
     try {
       final call = _makeCall(generateCallId(4));
       // call.state.value.isRingingFlow;
-      await call.getOrCreate(ringing: true, video: true, memberIds: [teacherId, studentId]).then((value) {
+      await call.getOrCreate(ringing: true, video: true, memberIds: [teacherId, studentId]).then((value) async {
         debugPrint("Call state after creation: ${call.state.value.status}");
         debugPrint("Call session ID: ${call.state.value.sessionId}");
         if (value.isSuccess) {
@@ -143,10 +149,32 @@ class CallingsCubit extends Cubit<CallingsState> {
               callerName: teacherName,
               callingID: studentId,
               callingName: studentName,
-              isActiveCall: true,
               isAccepted: false,
-              isRinging: false);
+              isActiveCall: true,
+              isRinging: true);
           FirebaseServices().firestore.collection("calls").doc(call.id).set(calling.toMap());
+
+          final Map<String, dynamic> params = {
+            'id': call.id,
+            'nameCaller': teacherName,
+            // Replace with actual teacher name
+            'appName': 'My App',
+            'avatar': 'https://d26oc3sg82pgk3.cloudfront.net/files/media/edit/image/56073/article_full%401x.jpg',
+            // URL of the teacher's avatar
+            'handle': teacherName,
+            'type': 0,
+            // 0 => audio call, 1 => video call
+            'duration': 300,
+            // Call duration in seconds
+            'textAccept': 'Accept',
+            'textDecline': 'Decline',
+            'textMissedCall': 'Missed call',
+            'textCallback': 'Call back',
+            'extra': {teacherId: studentId},
+            // 'headers': {'apiKey': 'your-api-key'},
+          };
+
+          // await FlutterCallkitIncoming.showCallkitIncoming(CallKitParams.fromJson(params));
           emit(CallCreatedState(call: call));
         } else if (call.state.value.status.isIdle) {
           debugPrint("Call Status: ${call.state.value.status}");
@@ -171,13 +199,14 @@ class CallingsCubit extends Cubit<CallingsState> {
   }
 
   // 3- create a call with ringtone
-  // Future<void> createCall(String teacherId, String studentId, String teacherName) async {
-  //   try {
-  //
-  //   } catch (e) {
-  //     print("Error creating call: $e");
-  //   }
-  // }
+  Future<void> createCall(String teacherId, String studentId, String teacherName) async {
+    try {
+
+    } catch (e) {
+      print("Error creating call: $e");
+    }
+  }
+
   // 4- end call via set isActive to false
   Future<void> endCall(BuildContext context, String callId) async {
     try {
@@ -216,9 +245,7 @@ class CallingsCubit extends Cubit<CallingsState> {
 
       await FirebaseServices().firestore.collection("meets").doc(meetId).update({
         'creatorID': '',
-        'creatorName': '',
         'isActiveMeet': false,
-        'meetID': '',
         'receiverID': '',
         'receiverName': '',
       }).then(
@@ -271,7 +298,7 @@ class CallingsCubit extends Cubit<CallingsState> {
   }
 
   // 2- leave meet in student side
-  Future<void> leaveMeetForStudent(String meetId, Call call) async {
+  Future<void> leaveMeetForStudent(context, String meetId, Call call) async {
     try {
       // Ensure the student cleanly leaves without affecting the teacher
       // await call.leave();
@@ -291,9 +318,9 @@ class CallingsCubit extends Cubit<CallingsState> {
         print(">>>>>>>>????????>>>>>>>>>>??????????>>>>>>>>>>>>>>?????????????>>>>>>>???????>>>>>$isActiveMeet");
         if (isActiveMeet == false) {
           print("Teacher has already ended the meet. Ending the call for the student.");
-          await call.end();
+          // await call.end();
           await call.leave();
-          await call.reject(reason: CallRejectReason.cancel());
+          // await call.reject(reason: CallRejectReason.cancel());
           emit(CallEndedState());
         } else {
           print("Teacher has not ended the meet. Student will leave the call.");
@@ -304,10 +331,64 @@ class CallingsCubit extends Cubit<CallingsState> {
           });
           emit(CallEndedState());
         }
-        // emit(CallEndedState());
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const Layout(type: 'Student')),
+          (route) => false,
+        );
       }
     } catch (e) {
       emit(CallErrorState("Failed to leave meet: $e"));
+    }
+  }
+
+  // 3- listen incoming calls:
+  void listenForIncomingCalls(String receiverId, Call call) {
+    print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Listening!!");
+    FirebaseFirestore.instance
+        .collection('calls')
+        .where('receiverId', isEqualTo: receiverId)
+        .where('isRinging', isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+      for (var doc in snapshot.docs) {
+        emit(IncomingCallState(callData: doc.data()));
+      }
+    });
+  }
+
+  // 4- accept the call
+  Future<void> acceptCall(String callId, Call call) async {
+    try {
+      await call.accept().then((value) async {
+        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Accepted");
+        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
+          'isRinging': false,
+          'isAccepted': true,
+        });
+        emit(CallAcceptedState(callId: callId));
+      });
+    } catch (e, s) {
+      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
+      emit(CallErrorState("Failed to accept call: $e"));
+    }
+  }
+
+  // 5- reject call
+  Future<void> rejectCall(String callId, Call call) async {
+    try {
+      await call.reject(reason: CallRejectReason.cancel()).then((value) async {
+        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Rejected");
+        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
+          'isRinging': false,
+        });
+        emit(CallRejectedState(callId: callId));
+      });
+    } catch (e, s) {
+      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
+      emit(CallErrorState("Failed to reject call: $e"));
     }
   }
 

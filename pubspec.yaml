@@ -13,14 +13,16 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   bloc: ^8.1.4
-  cloud_firestore: ^5.4.3
   cached_network_image: ^3.4.1
+  cloud_firestore: ^5.4.3
+  crypto: ^3.0.6
   dart_jsonwebtoken: ^2.14.1
   dartz: ^0.10.1
-  device_info_plus: any
+  #  device_info_plus: ^11.1.1
   equatable: ^2.0.5
   flutter_bloc: ^8.1.6
 #  flutter_callkit_incoming: ^2.0.4+2
+
   firebase_app_check: ^0.3.1+3
   firebase_auth: ^5.3.1
   firebase_core: ^3.6.0
@@ -34,14 +36,15 @@ dependencies:
   rxdart: ^0.28.0
   shared_preferences: ^2.3.2
   stream_chat_flutter: ^8.1.0
-  stream_video_flutter: ^0.5.4
-  stream_video_push_notification: ^0.5.4
-  stream_video_screen_sharing: ^0.5.4
+  stream_video_flutter: ^0.6.0
+  stream_video_push_notification: ^0.6.0
+  stream_video_screen_sharing: ^0.6.0
   uuid: ^4.5.1
-  uni_links: ^0.5.1
-  crypto: ^3.0.6
+#  uni_links: ^0.5.1
 
-#dependency_overrides:
+dependency_overrides:
+  flutter_callkit_incoming:
+    path: packages/flutter_callkit_incoming-master
 #  archive: ^3.6.1
 #  stream_video:
 #    path: ../getstream_flutter_example/packages/stream_video

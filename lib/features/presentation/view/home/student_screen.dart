@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
@@ -18,65 +19,20 @@ class StudentScreen extends StatefulWidget {
 class _StudentScreenState extends State<StudentScreen> {
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
-  // return BlocProvider(
-  //   create: (context) => CallingsCubit()..fetchActiveMeets(),
-  //   child: Scaffold(
-  //     floatingActionButton: FloatingActionButton.small(
-  //       onPressed: () =>
-  //           _refreshIndicatorKey.currentState?.show().then((_) => context.read<CallingsCubit>().fetchActiveMeets()),
-  //       child: const Icon(Icons.refresh),
-  //     ),
-  //     body: RefreshIndicator(
-  //       key: _refreshIndicatorKey,
-  //       onRefresh: () async {
-  //         await Future.delayed(const Duration(milliseconds: 300))
-  //             .then((_) => context.read<CallingsCubit>().fetchActiveMeets());
-  //       },
-  //       child: BlocBuilder<CallingsCubit, CallingsState>(
-  //         builder: (context, state) {
-  //           if (state is ActiveMeetsLoadingState) {
-  //             return const Center(child: CircularProgressIndicator());
-  //           } else if (state is ActiveMeetsFetchedState) {
-  //             final activeCalls = state.activeMeets;
-  //             if (activeCalls.isEmpty) {
-  //               return const Center(child: Text("No active calls found."));
-  //             }
-  //
-  //             return ListView.builder(
-  //               itemCount: activeCalls.length,
-  //               itemBuilder: (context, index) {
-  //                 final callData = activeCalls[index];
-  //                 return ListTile(
-  //                   leading: CircleAvatar(
-  //                     backgroundColor: callData["isActiveUser"] == true ? CupertinoColors.activeGreen : Colors.red,
-  //                     child: Text(
-  //                       callData["callId"][0].toUpperCase(),
-  //                       style: const TextStyle(color: Colors.white),
-  //                     ),
-  //                   ),
-  //                   title: Text("CallID: ${callData["callId"]}"),
-  //                   trailing: callData["isActive"] == true
-  //                       ? IconButton(
-  //                           icon: const Icon(Icons.meeting_room),
-  //                           onPressed: () {
-  //                             _showJoinCancelDialog(context, callData["callId"]);
-  //                           },
-  //                           color: Colors.blue,
-  //                         )
-  //                       : const SizedBox.shrink(),
-  //                 );
-  //               },
-  //             );
-  //           } else if (state is CallErrorState) {
-  //             return const Center(child: Text("No calls created yet"));
-  //           } else {
-  //             return const Center(child: Text("No data available."));
-  //           }
-  //         },
-  //       ),
-  //     ),
-  //   ),
-  // );
+  @override
+  void initState() {
+    AppConsumers().observeCallKitEvents(context);
+
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    AppConsumers().compositeSubscription.cancel();
+
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -138,18 +94,18 @@ class _StudentScreenState extends State<StudentScreen> {
                         ),
                       ),
                       title: Text("Creator Name: ${meet.creatorName}"),
-                      subtitle: Text("MeetID: ${meet.meetID.isNotEmpty ? meet.meetID : 'Unknown'}"), // Fallback for empty meetID
+                      subtitle: Text("MeetID: ${meet.meetID.isNotEmpty ? meet.meetID : 'Unknown'}"),
+                      // Fallback for empty meetID
                       trailing: meet.isActiveMeet
                           ? IconButton(
-                        icon: const Icon(Icons.meeting_room),
-                        onPressed: () {
-                          _showJoinCancelDialog(context, meet.meetID);
-                        },
-                        color: Colors.blue,
-                      )
+                              icon: const Icon(Icons.meeting_room),
+                              onPressed: () {
+                                _showJoinCancelDialog(context, meet.meetID);
+                              },
+                              color: Colors.blue,
+                            )
                           : const Icon(Icons.no_meeting_room, color: Colors.redAccent),
                     );
-
                   },
                 ),
               );

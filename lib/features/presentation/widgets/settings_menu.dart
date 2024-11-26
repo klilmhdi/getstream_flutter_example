@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
@@ -40,6 +41,7 @@ class _SettingsMenuState extends State<SettingsMenu> {
 
   bool showAudioOutputs = false;
   bool showAudioInputs = false;
+
   bool get showMainSettings => !showAudioOutputs && !showAudioInputs;
 
   @override
@@ -88,14 +90,14 @@ class _SettingsMenuState extends State<SettingsMenu> {
   }
 
   List<Widget> _buildMenuItems() {
+    final theme = StreamVideoTheme.of(context);
     return [
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: StreamVideoTheme.of(context)
             .callControlsTheme
             .callReactions
-            .where(
-                (element) => element.emojiCode != _raisedHandReaction.emojiCode)
+            .where((element) => element.emojiCode != _raisedHandReaction.emojiCode)
             .map((e) {
           return InkWell(
               onTap: () {
@@ -131,10 +133,33 @@ class _SettingsMenuState extends State<SettingsMenu> {
         },
       ),
       const SizedBox(height: 16),
+      // StandardActionMenuItem(
+      //   icon: Icons.auto_graph,
+      //   label: 'Call stats',
+      //   onPressed: widget.onStatsPressed,
+      // ),
+      // const SizedBox(height: 16),
       StandardActionMenuItem(
-        icon: Icons.auto_graph,
-        label: 'Call stats',
-        onPressed: widget.onStatsPressed,
+        icon: Icons.copy_outlined,
+        label: 'Copy call ID: ${widget.call.id}',
+        onPressed: () async {
+          await Clipboard.setData(ClipboardData(text: widget.call.id));
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.check, color: CupertinoColors.activeGreen),
+                    const SizedBox(width: 8),
+                    Text('Call ID copied to clipboard, Call ID: ${widget.call.id}',
+                        style: theme.textTheme.body.copyWith(color: theme.colorTheme.textHighEmphasis))
+                  ],
+                ),
+              ),
+            );
+          }
+        },
       ),
       const SizedBox(height: 16),
       StandardActionMenuItem(
@@ -179,10 +204,7 @@ class _SettingsMenuState extends State<SettingsMenu> {
               return StandardActionMenuItem(
                 icon: Icons.multitrack_audio,
                 label: device.label,
-                color:
-                    widget.call.state.value.audioOutputDevice?.id == device.id
-                        ? CupertinoColors.activeGreen
-                        : null,
+                color: widget.call.state.value.audioOutputDevice?.id == device.id ? CupertinoColors.activeGreen : null,
                 onPressed: () {
                   widget.call.setAudioOutputDevice(device);
                   widget.onAudioOutputChange?.call(device);
@@ -215,9 +237,7 @@ class _SettingsMenuState extends State<SettingsMenu> {
               return StandardActionMenuItem(
                 icon: Icons.multitrack_audio,
                 label: device.label,
-                color: widget.call.state.value.audioInputDevice?.id == device.id
-                    ? CupertinoColors.activeGreen
-                    : null,
+                color: widget.call.state.value.audioInputDevice?.id == device.id ? CupertinoColors.activeGreen : null,
                 onPressed: () {
                   widget.call.setAudioInputDevice(device);
                   widget.onAudioInputChange?.call(device);
@@ -285,8 +305,7 @@ class StandardActionMenuItem extends StatelessWidget {
             color: color,
           ),
           const SizedBox(width: 8),
-          Text(label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         ],
       ),
     );

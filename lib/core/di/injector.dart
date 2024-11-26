@@ -75,7 +75,9 @@ class AppInjector {
 
     locator.registerFactoryParam<UserAuthRepository, User, TokenResponse>(
       (user, tokenResponse) {
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>tokenResponse.apiKey: ${tokenResponse.apiKey}");
         registerStreamChat(tokenResponse.apiKey);
+        // registerStreamChat("z3k88gbquy4a");
 
         // We need to register the video client here because we need it to
         // initialise the user auth repo.
@@ -171,8 +173,6 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
     tokenLoader: tokenLoader,
     options: const StreamVideoOptions(
       logPriority: Priority.verbose,
-      muteAudioWhenInBackground: true,
-      muteVideoWhenInBackground: true,
       keepConnectionsAliveWhenInBackground: true,
     ),
     pushNotificationManagerProvider: StreamVideoPushNotificationManager.create(

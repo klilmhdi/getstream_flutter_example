@@ -1,4 +1,3 @@
-import 'package:getstream_flutter_example/core/utils/consts/call_consts.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 import '../services/token_service.dart';

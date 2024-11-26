@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/transparent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="120dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="horizontal">
+
+
+            <LinearLayout
+                android:id="@+id/llDecline"
+                android:layout_width="1dp"
+                android:layout_height="45dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="45dp"
+                    android:layout_height="45dp"
+                    android:layout_centerHorizontal="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/decline"
+                    tools:ignore="ContentDescription" />
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/llAccept"
+                android:layout_width="1dp"
+                android:layout_height="45dp"
+                android:layout_weight="1"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="45dp"
+                    android:layout_height="45dp"
+                    android:layout_centerHorizontal="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/accept"
+                    tools:ignore="ContentDescription" />
+            </LinearLayout>
+
+
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:layout_gravity="center"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/size_text_action"
+                android:text="مكالمه واردة"
+                android:textAppearance="@style/TitleFontStyle"
+                />
+
+            <LinearLayout
+                android:layout_width="1dp"
+                android:layout_height="5dp" />
+
+
+            <TextView
+                android:id="@+id/tvNameCaller"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16dp"
+                android:textAppearance="@style/CallerFontStyle"
+                android:text="أنس عبد الله"
+                />
+
+        </LinearLayout>
+        <ImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="80dp"
+            android:layout_height="60dp"
+            android:scaleType="centerCrop"
+            android:layout_gravity="center"
+            android:src="@drawable/jeras3"
+            android:visibility="visible" />
+    </LinearLayout>
+
+
+
+</LinearLayout>

@@ -131,6 +131,8 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.groups, size: 30),
                 const SizedBox(height: 8),

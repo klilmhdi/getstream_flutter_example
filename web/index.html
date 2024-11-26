@@ -28,47 +28,9 @@
     <script src="web/flutter_bootstrap.js" async></script>
 </head>
 <body>
-<!--<script>-->
-<!--    window.addEventListener('load', function(ev) {-->
-<!--      // Download main.dart.js-->
-<!--      FlutterLoader.load({-->
-<!--        serviceWorker: {-->
-<!--          serviceWorkerVersion: serviceWorkerVersion,-->
-<!--        }-->
-<!--      }).then(function(engineInitializer) {-->
-<!--        return engineInitializer.initializeEngine();-->
-<!--      }).then(function(appRunner) {-->
-<!--        return appRunner.runApp();-->
-<!--      });-->
-<!--    });-->
 
-<!--    // Register the service worker-->
-<!--  if ('serviceWorker' in navigator) {-->
-<!--    navigator.serviceWorker.register('/firebase-messaging-sw.js')-->
-<!--      .then(function(registration) {-->
-<!--        console.log('ServiceWorker registration successful with scope: ', registration.scope);-->
+<video id="callVideo" autoplay playsinline style="display:none;"></video>
 
-<!--        // Only after the service worker is registered, initialize Firebase Messaging-->
-<!--        initializeFirebaseMessaging();-->
-<!--      })-->
-<!--      .catch(function(err) {-->
-<!--        console.log('ServiceWorker registration failed: ', err);-->
-<!--      });-->
-<!--  } else {-->
-<!--    console.log('ServiceWorker is not supported in this browser.');-->
-<!--  }-->
-
-<!--  function initializeFirebaseMessaging() {-->
-<!--    // Initialize Firebase Cloud Messaging here, after the service worker is registered-->
-<!--    const messaging = firebase.messaging();-->
-
-<!--    messaging.getToken({ vapidKey: 'BJ5rud-ytdfp0f2RNMkLFkgEkZSn-sN7cl1UMg9qT3ueo_KoADtX-pB9cOiYin7_zmS7MS94YG7AiLkiQtW0igU' }).then((token) => {-->
-<!--      console.log('FCM Token:', token);-->
-<!--    }).catch((err) => {-->
-<!--      console.log('FCM Token Error:', err);-->
-<!--    });-->
-<!--  }-->
-<!--</script>-->
 <script>
     // Define the serviceWorkerVersion variable
     var serviceWorkerVersion = '1.0.0'; // Adjust version if needed
@@ -126,6 +88,33 @@
         console.log('An error occurred while retrieving the FCM token:', error);
       });
     }
+
+    function requestPictureInPicture() {
+        const video = document.getElementById('callVideo');
+        if (video && video.requestPictureInPicture) {
+            video.requestPictureInPicture().catch(console.error);
+        } else {
+            console.error("No video element found or PiP is not supported.");
+        }
+    }
+
+    function createCallVideoElement() {
+        if (!document.getElementById('callVideo')) {
+          const video = document.createElement('video');
+          video.id = 'callVideo';
+          video.autoplay = true;
+          video.playsInline = true;
+          video.style.display = 'none'; // Hide the video element
+          document.body.appendChild(video);
+        }
+  }
+
+  function removeCallVideoElement() {
+        const video = document.getElementById('callVideo');
+        if (video) {
+          document.body.removeChild(video);
+        }
+  }
 </script>
 
 <!-- This script adds the flutter initialization JS code -->
