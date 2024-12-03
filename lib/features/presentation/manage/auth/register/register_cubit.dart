@@ -19,40 +19,30 @@ import '../../../../data/models/user_credentials_model.dart';
 class RegisterCubit extends Cubit<RegisterState> {
   RegisterCubit() : super(RegisterInitState());
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final DatabaseReference _database = FirebaseDatabase.instance.ref('users');
-
+  /// register to firebase and upload user data to GetStream server, Firebase Firestore, and RealTimeDB
   Future<void> registerUser(String name, String email, String password, String type) async {
     emit(RegisterLoadingState());
 
     try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      final user = userCredential.user;
-
-      if (user == null) {
-        emit(RegisterFailedState("User creation failed. Please try again."));
-        return;
-      }
-
-      String uid = user.uid;
-      String platform = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS
-          ? "Mobile"
-          : "Web";
-
+      UserCredential userCredential = await FirebaseServices().signUpWithEmail(email: email, password: password);
       final rules = type.toLowerCase() == "teacher" ? "admin" : "user";
-          final images = type.toLowerCase() == "teacher"
+      final images = type.toLowerCase() == "teacher"
           ? "https://d26oc3sg82pgk3.cloudfront.net/files/media/edit/image/56073/article_full%401x.jpg"
           : "https://static.wikia.nocookie.net/dragonball/images/b/ba/Goku_anime_profile.png/revision/latest?cb=20240723150655";
 
       final authController = locator.get<UserAuthController>();
       final appPreferences = locator<AppPreferences>();
+      final user = userCredential.user;
+      if (user == null) {
+        emit(RegisterFailedState("User creation failed. Please try again."));
+        return;
+      }
+      String uid = user.uid;
+      String? token = await FirebaseMessaging.instance.getToken();
 
-      String? token = platform == "Web" ? user.uid : await FirebaseMessaging.instance.getToken();
 
-      await FirebaseServices().uploadUserDataToFirebase(uid, name: name, email: email, role: type).then(
-            (_) async {
-          await _database.child(uid).set({'name': name, 'email': email, 'platform': platform, 'token': token, 'role': type});
-
+      await FirebaseServices().uploadUserDataToFirebase(uid, name: name, email: email, role: type, token: token!).then(
+        (_) async {
           final user = UserInfo(id: uid, name: name, role: rules, image: images);
           print("User registered successfully: $user");
 
@@ -62,9 +52,11 @@ class RegisterCubit extends Cubit<RegisterState> {
 
           // Save user credentials in SharedPreferences
           await appPreferences.setUserCredentials(UserCredentialsModel(
-            token: UserToken.jwt(generateJwt(userId: uid, secretKey: '7azrmrktn5q59se4nvdetrzepn3gg5v7evuxhkj5x7ydg29hfdcbp9ph483vyhwm')),
-            userInfo: user,
-          ));
+              token: UserToken.jwt(generateJwt(
+                userId: uid,
+                secretKey: '7azrmrktn5q59se4nvdetrzepn3gg5v7evuxhkj5x7ydg29hfdcbp9ph483vyhwm',
+              )),
+              userInfo: user));
 
           emit(RegisterSuccessState(user: User(info: user)));
         },

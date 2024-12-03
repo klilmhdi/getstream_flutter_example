@@ -6,6 +6,8 @@ import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/ready_to_start_screen.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart';
+import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 import '../../../data/services/firebase_services.dart';
 import '../meet/meet_screen.dart';
 
@@ -21,8 +23,25 @@ class _StudentScreenState extends State<StudentScreen> {
 
   @override
   void initState() {
-    AppConsumers().observeCallKitEvents(context);
-
+    StreamBackgroundService.init(
+      StreamVideo.instance,
+      onButtonClick: (call, type, serviceType) async {
+        switch (serviceType) {
+          case ServiceType.call:
+            call.reject();
+            call.leave();
+          case ServiceType.screenSharing:
+            StreamVideoFlutterBackground.stopService(ServiceType.screenSharing);
+            call.setScreenShareEnabled(enabled: false);
+        }
+      },
+    );
+    context.read<CallingsCubit>().listenForIncomingCalls(
+        locator.get<UserAuthController>().currentUser?.id ?? FirebaseServices().auth.currentUser?.uid ?? "empty", context);
+    AppConsumers()
+      ..observeCallKitEvents(context)
+      ..initPushNotificationManagerIfAvailable(context)
+      ..consumeIncomingCall(context);
     super.initState();
   }
 

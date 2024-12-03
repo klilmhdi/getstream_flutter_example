@@ -10,7 +10,7 @@
         android:id="@+id/ivBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#FFFFFF"
+        android:background="#0955fa"
         android:scaleType="centerCrop"
         tools:ignore="ContentDescription" />
 
@@ -36,20 +36,21 @@
                 android:layout_height="@dimen/base_margin_x2_5"
                 android:layout_above="@id/ivAvatar"
                 android:layout_centerHorizontal="true"
-                android:layout_marginBottom="@dimen/base_margin_x5"
                 android:adjustViewBounds="true"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_logo"
                 android:visibility="invisible"
+                android:scaleType="fitCenter"
+                android:layout_marginBottom="@dimen/base_margin_x5"
+                android:src="@drawable/ic_logo"
                 tools:ignore="ContentDescription" />
 
 
             <de.hdodenhof.circleimageview.CircleImageView
                 android:id="@+id/ivAvatar"
-                android:layout_width="150dp"
-                android:layout_height="150dp"
+                android:layout_width="@dimen/size_avatar"
+                android:layout_height="@dimen/size_avatar"
+                android:visibility="invisible"
                 android:layout_centerInParent="true"
-                android:src="@drawable/jeras3"
+                android:src="@drawable/ic_default_avatar"
                 app:civ_border_color="#80ffffff"
                 app:civ_border_width="1dp" />
 
@@ -59,6 +60,7 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/ivAvatar"
                 android:layout_centerHorizontal="true"
+                android:layout_marginTop="@dimen/base_margin_x2"
                 android:gravity="center"
                 android:orientation="vertical">
 
@@ -72,62 +74,26 @@
                     android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:textColor="@color/black"
+                    android:textColor="@android:color/white"
                     android:textSize="@dimen/size_text_name"
                     app:autoSizeMaxTextSize="@dimen/size_text_name"
                     app:autoSizeMinTextSize="12sp"
                     app:autoSizeStepGranularity="2sp"
                     app:autoSizeTextType="uniform"
                     tools:ignore="MissingPrefix"
-                    android:gravity="center_horizontal"
                     tools:targetApi="o"
-                    android:fontFamily="@font/semi_bold"
-                    tools:text="@string/caller_name" />
+                    tools:text="Caller Name" />
 
-
-
-                <LinearLayout
+                <TextView
+                    android:id="@+id/tvNumber"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_below="@id/tvNameCaller"
-                    android:layout_centerHorizontal="true"
-                    android:orientation="horizontal"
-                    android:gravity="center_horizontal"
-                    android:layout_marginTop="15dp"
-                    android:layoutDirection="rtl">
-
-
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/phoneincoming"
-                        android:layout_marginEnd="8dp"
-                        />
-
-                    <TextView
-                        android:id="@+id/tvNumber"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:autoSizeMaxTextSize="@dimen/size_text_name"
-                        android:autoSizeMinTextSize="12sp"
-                        android:autoSizeStepGranularity="2sp"
-                        android:autoSizeTextType="uniform"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:textColor="@color/purple"
-                        android:textSize="18sp"
-                        app:autoSizeMaxTextSize="@dimen/size_text_name"
-                        app:autoSizeMinTextSize="12sp"
-                        app:autoSizeStepGranularity="2sp"
-                        app:autoSizeTextType="uniform"
-                        tools:ignore="MissingPrefix"
-                        tools:targetApi="o"
-                        android:fontFamily="@font/regular"
-                        tools:text="@string/incoming_call" />
-
-                </LinearLayout>
-
+                    android:layout_marginTop="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/action_text"
+                    android:textSize="@dimen/size_text_action"
+                    tools:text="Some info" />
 
             </LinearLayout>
 
@@ -179,8 +145,7 @@
                         android:layout_marginBottom="@dimen/base_margin"
                         android:gravity="center"
                         android:text="@string/text_decline"
-                        android:textColor="@color/black"
-                        android:fontFamily="@font/regular"
+                        android:textColor="@color/action_text"
                         android:textSize="@dimen/size_text_action" />
 
                 </com.hiennv.flutter_callkit_incoming.widgets.RippleRelativeLayout>
@@ -226,8 +191,7 @@
                         android:layout_marginBottom="@dimen/base_margin"
                         android:gravity="center"
                         android:text="@string/text_accept"
-                        android:textColor="@color/black"
-                        android:fontFamily="@font/regular"
+                        android:textColor="@color/action_text"
                         android:textSize="@dimen/size_text_action" />
 
 

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_state.dart';
@@ -30,7 +31,7 @@ class _TeacherScreenState extends State<TeacherScreen> {
         switch (serviceType) {
           case ServiceType.call:
             call.reject();
-            call.leave();
+            call.end();
           case ServiceType.screenSharing:
             StreamVideoFlutterBackground.stopService(ServiceType.screenSharing);
             call.setScreenShareEnabled(enabled: false);
@@ -38,11 +39,33 @@ class _TeacherScreenState extends State<TeacherScreen> {
       },
     );
 
-    AppConsumers().observeCallKitEvents(context);
+    AppConsumers()
+      ..observeCallKitEvents(context)
+      ..initPushNotificationManagerIfAvailable(context)
+      ..consumeIncomingCall(context);
     super.initState();
   }
 
-  _makeCall(context, {required String studentName}) {}
+  _makeCall(BuildContext context, {required String studentName, required String studentId}) async {
+    final teacherId = locator.get<UserAuthController>().currentUser?.id ?? '';
+    final teacherName = locator.get<UserAuthController>().currentUser?.name ?? 'Teacher';
+    final cubit = context.read<CallingsCubit>();
+
+    try {
+      await cubit.initiateCall(context, teacherId, teacherName, studentId: studentId, studentName: studentName);
+
+      // Check the state's emitted after initiating the call
+      if (cubit.state is CallCreatedState) {
+        await cubit.createCall(context, teacherId, studentId, teacherName);
+      } else {
+        debugPrint('Call initiation failed with state: ${cubit.state}');
+      }
+    } catch (e, stacktrace) {
+      debugPrint('Error during _makeCall: $e');
+      debugPrint('Stacktrace: $stacktrace');
+    }
+  }
+
 
   @override
   void dispose() {
@@ -63,7 +86,9 @@ class _TeacherScreenState extends State<TeacherScreen> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => CallingsCubit()..initiateMeet(context, teacherId, teacherName!),
+          create: (context) => CallingsCubit()
+            ..initiateMeet(context, teacherId, teacherName!)
+            ..initiateCall(context, teacherId, teacherName),
         ),
         BlocProvider(
           create: (context) =>
@@ -102,7 +127,8 @@ class _TeacherScreenState extends State<TeacherScreen> {
                         //       ),
                         trailing: IconButton(
                           icon: const Icon(Icons.call),
-                          onPressed: () => _makeCall(context, studentName: student['name']),
+                          onPressed: () =>
+                              _makeCall(context, studentName: student['name'], studentId: student['userId']),
                         ),
                       );
                     },

@@ -14,16 +14,6 @@
     </style>
 
 
-    <style name="TitleFontStyle" parent="TextAppearance.AppCompat">
-        <item name="android:fontFamily">@font/regular</item>
-        <item name="android:textColor">@color/textColorPrimary</item> <!-- Use the color resource -->
-    </style>
-    <style name="CallerFontStyle" parent="TextAppearance.AppCompat">
-        <item name="android:fontFamily">@font/semi_bold</item>
-        <item name="android:textColor">@color/textColorPrimary</item> <!-- Use the color resource -->
-    </style>
-
-
     <style name="TranslucentTheme" parent="@android:style/Theme.Translucent.NoTitleBar">
         <item name="android:background">@android:color/transparent</item>
         <item name="background">@android:color/transparent</item>

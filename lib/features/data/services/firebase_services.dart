@@ -1,17 +1,20 @@
 // firebase_services.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 import 'package:getstream_flutter_example/features/data/models/calling_model.dart';
 import 'package:getstream_flutter_example/features/data/models/meetings_model.dart';
+import 'package:getstream_flutter_example/features/data/models/user_model.dart';
 import 'package:uuid/uuid.dart';
 
 class FirebaseServices {
   ///==================== > Variables
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseDatabase database = FirebaseDatabase.instance;
 
   ///==================== > Init FCM Token
   static Future<String?> initFcmToken() async {
@@ -32,20 +35,20 @@ class FirebaseServices {
     required String name,
     required String email,
     required String role,
+    required String token,
   }) async {
-    final String? token = await initFcmToken();
+    // final String? token = await initFcmToken();
+    String platform = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS
+        ? "Mobile"
+        : "Web";
+
     // String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
 
-    await firestore.collection("users").doc(uid).set({
-      'userId': uid,
-      'name': name,
-      'email': email,
-      'token': kIsWeb ? const Uuid().v4().toString() : token,
-      'role': role,
-      'platform': kIsWeb ? "Web" : "Mobile",
-      'createdAt': Timestamp.now(),
-      'isActiveUser': true
-    });
+    final UserModel userModel =
+        UserModel(uid: uid, name: name, email: email, role: role, platform: platform, token: token, isActiveUser: true);
+
+    await firestore.collection("users").doc(uid).set(userModel.toMap());
+    await database.ref('users').child(uid).set(userModel.toMap());
   }
 
   ///==================== > Upload call data to FirebaseFirestore
@@ -61,6 +64,7 @@ class FirebaseServices {
   ///==================== > Upload meet data to FirebaseFirestore
   Future<void> uploadMeetDataToFirebase(MeetingModel meeting) async {
     await firestore.collection("meets").doc(meeting.meetID).set(meeting.toMap());
+    await database.ref('meets/${meeting.meetID}').set(meeting.toMap());
   }
 
   /*
@@ -122,7 +126,6 @@ class FirebaseServices {
     }
   }
 
-  Future<UserCredential> signUpWithEmail({required String email, required String password}) async {
-    return await auth.createUserWithEmailAndPassword(email: email, password: password);
-  }
+  Future<UserCredential> signUpWithEmail({required String email, required String password}) async =>
+      await auth.createUserWithEmailAndPassword(email: email, password: password);
 }

@@ -5,6 +5,7 @@ class UserModel {
   final String role;
   final String platform;
   final String token;
+  final bool isActiveUser;
 
   UserModel({
     required this.uid,
@@ -13,16 +14,19 @@ class UserModel {
     required this.role,
     required this.platform,
     required this.token,
+    required this.isActiveUser,
   });
 
   factory UserModel.fromMap(String uid, Map<String, dynamic> data) {
     return UserModel(
       uid: uid,
-      name: data['name'] ?? 'Guest User',  // Fallback to 'Guest User' if name is null
+      name: data['name'] ?? 'Guest User',
+      // Fallback to 'Guest User' if name is null
       email: data['email'] ?? '',
       role: data['role'] ?? '',
       platform: data['platform'] ?? '',
       token: data['token'] ?? '',
+      isActiveUser: data['isActiveUser'] ?? false,
     );
   }
 
@@ -34,6 +38,19 @@ class UserModel {
       role: role,
       platform: platform,
       token: token,
+      isActiveUser: isActiveUser,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': uid,
+      'name': name,
+      'email': email,
+      'token': token,
+      'role': role,
+      'platform': platform,
+      'isActiveUser': isActiveUser
+    };
   }
 }

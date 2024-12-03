@@ -21,6 +21,12 @@ class CallCreatedState extends CallingsState {
   List<Object?> get props => [call];
 }
 
+class LoadCallToStudentState extends CallingsState {}
+
+class SuccessSendCallToStudentState extends CallingsState {}
+
+class FailedSendCallToStudentState extends CallingsState {}
+
 class IncomingCallState extends CallingsState {
   final Map<String, dynamic> callData;
 
@@ -41,6 +47,8 @@ class CallRejectedState extends CallingsState {
 
 class CallEndedState extends CallingsState {}
 
+class CallLeavedState extends CallingsState {}
+
 class CallErrorState extends CallingsState {
   final String message;
 
@@ -52,6 +60,8 @@ class CallErrorState extends CallingsState {
 
 // meeting states
 class MeetingLoadingState extends CallingsState {}
+
+class MeetingLoadingJoinStudentState extends CallingsState {}
 
 class MeetingCreatedState extends CallingsState {
   final Call meet;
@@ -72,7 +82,15 @@ class MeetingJoinedState extends CallingsState {
   List<Object?> get props => [call, connectOptions];
 }
 
-class MeetingEndedState extends CallingsState {}
+class MeetingEndedState extends CallingsState {
+  final String meetId;
+  final Duration duration;
+
+  const MeetingEndedState({required this.meetId, required this.duration});
+
+  @override
+  List<Object?> get props => [meetId, duration];
+}
 
 class MeetingErrorState extends CallingsState {
   final String message;
@@ -81,6 +99,15 @@ class MeetingErrorState extends CallingsState {
 
   @override
   List<Object?> get props => [message];
+}
+
+class MeetingDurationUpdatedState extends CallingsState {
+  final Duration duration;
+
+  const MeetingDurationUpdatedState({required this.duration});
+
+  @override
+  List<Object?> get props => [duration];
 }
 
 // active meets states

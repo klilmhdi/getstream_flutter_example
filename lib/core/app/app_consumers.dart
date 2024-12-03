@@ -6,6 +6,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
+import 'package:stream_video_push_notification/stream_video_push_notification.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../features/data/repo/app_preferences.dart';
 import '../../features/data/services/token_service.dart';
@@ -17,14 +21,53 @@ import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionS
 import '../utils/bloc_observer.dart';
 import '../utils/controllers/user_auth_controller.dart';
 
+@pragma('vm:entry-point') // Required for Flutter on Android
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('Handling a background message: ${message.messageId}');
+
+  // Initialize Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Handle the message
+  await AppInjector.init();
+
+  try {
+    final prefs = locator.get<AppPreferences>();
+    final credentials = prefs.userCredentials;
+    if (credentials == null) return;
+
+    final tokenResponse = await locator.get<TokenService>().loadToken(
+          userId: credentials.userInfo.id,
+          environment: prefs.environment,
+        );
+
+    final streamVideo = AppInjector.registerStreamVideo(
+      tokenResponse,
+      User(info: credentials.userInfo),
+      prefs.environment,
+    );
+
+    streamVideo.observeCallDeclinedCallKitEvent();
+    await AppConsumers().handleRemoteMessage(message);
+  } catch (e, stk) {
+    debugPrint('Error handling remote message: $e');
+    debugPrint(stk.toString());
+  }
+
+  // Reset dependencies to clean up
+  return AppInjector.reset();
+}
+
 class AppConsumers {
   final compositeSubscription = CompositeSubscription();
 
   // initialize app services when the app begin
   Future<void> initializeServices(BuildContext context) async {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     FirebaseDatabase database = FirebaseDatabase.instance;
+    // showCallkitIncoming(const Uuid().v4());
 
     Bloc.observer = MyBlocObserver();
     // Optional: Enable persistence on web (if needed)
@@ -68,37 +111,6 @@ class AppConsumers {
     final authController = locator.get<UserAuthController>();
     await authController.login(User(info: credentials.userInfo), prefs.environment);
     print("User auto-logged in with credentials from SharedPreferences.");
-  }
-
-  // for background notification
-  @pragma('vm:entry-point')
-  Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    await AppInjector.init();
-
-    try {
-      final prefs = locator.get<AppPreferences>();
-      final credentials = prefs.userCredentials;
-      if (credentials == null) return;
-
-      final tokenResponse =
-          await locator.get<TokenService>().loadToken(userId: credentials.userInfo.id, environment: prefs.environment);
-
-      final streamVideo = AppInjector.registerStreamVideo(
-        tokenResponse,
-        User(info: credentials.userInfo),
-        prefs.environment,
-      );
-
-      streamVideo.observeCallDeclinedCallKitEvent();
-
-      await handleRemoteMessage(message);
-    } catch (e, stk) {
-      debugPrint('Error handling remote message: $e');
-      debugPrint(stk.toString());
-    }
-
-    return AppInjector.reset();
   }
 
   // remote message
@@ -149,6 +161,8 @@ class AppConsumers {
   void observeCallKitEvents(context) {
     final streamVideo = locator.get<StreamVideo>();
 
+    StreamVideo.instance.pushNotificationManager?.endAllCalls();
+
     compositeSubscription.add(
       streamVideo.observeCoreCallKitEvents(
         onCallAccepted: (callToJoin) {
@@ -175,4 +189,5 @@ class AppConsumers {
       FirebaseMessaging.onMessage.listen(handleRemoteMessage),
     );
   }
+
 }

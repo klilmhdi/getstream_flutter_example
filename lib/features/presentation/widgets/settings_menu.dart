@@ -133,12 +133,6 @@ class _SettingsMenuState extends State<SettingsMenu> {
         },
       ),
       const SizedBox(height: 16),
-      // StandardActionMenuItem(
-      //   icon: Icons.auto_graph,
-      //   label: 'Call stats',
-      //   onPressed: widget.onStatsPressed,
-      // ),
-      // const SizedBox(height: 16),
       StandardActionMenuItem(
         icon: Icons.copy_outlined,
         label: 'Copy call ID: ${widget.call.id}',

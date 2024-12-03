@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
@@ -19,6 +20,7 @@ import '../../../../core/di/injector.dart';
 import '../../../../core/utils/controllers/user_auth_controller.dart';
 import '../../../data/repo/app_preferences.dart';
 import '../../../data/repo/user_chat_repository.dart';
+import '../home/layout.dart';
 
 class MeetScreen extends StatefulWidget {
   const MeetScreen({
@@ -36,11 +38,11 @@ class MeetScreen extends StatefulWidget {
 
 class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
   late final _userChatRepo = locator.get<UserChatRepository>();
+  final userAuthController = locator.get<UserAuthController>();
 
   Channel? _channel;
   ParticipantLayoutMode _currentLayoutMode = ParticipantLayoutMode.grid;
   bool _moreMenuVisible = false;
-  bool _isPip = false;
   RtcLocalAudioTrack? _microphoneTrack;
   RtcLocalCameraTrack? _cameraTrack;
   final _isTeacher = FirebaseServices().checkIfCurrentUserIsTeacher();
@@ -67,35 +69,27 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
     }
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.detached) {
-      setState(() {
-        _isPip = true; // Activate PiP when app is minimized
-      });
-    } else if (state == AppLifecycleState.resumed) {
-      setState(() {
-        _isPip = false; // Deactivate PiP when app is foregrounded
-      });
-    }
-
-    super.didChangeAppLifecycleState(state);
-  }
+  // @override
+  // void didChangeAppLifecycleState(AppLifecycleState state) {
+  //   if (state == AppLifecycleState.paused ||
+  //       state == AppLifecycleState.inactive ||
+  //       state == AppLifecycleState.detached) {
+  //   } else if (state == AppLifecycleState.resumed) {}
+  //
+  //   super.didChangeAppLifecycleState(state);
+  // }
 
   @override
   void dispose() {
     widget.call.leave();
     _userChatRepo.disconnectUser();
     WidgetsBinding.instance.removeObserver(this);
-    _isPip = false; // Deactivate PiP when app is foregrounded
+    StreamVideo.instance.pushNotificationManager?.endAllCalls();
     super.dispose();
   }
 
   Future<void> _connectChatChannel() async {
     try {
-      final userAuthController = locator.get<UserAuthController>();
       final appPreferences = locator.get<AppPreferences>();
 
       final currentUser = userAuthController.currentUser;
@@ -160,43 +154,24 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                   onBackPressed: () => StreamPictureInPictureUiKitView(call: widget.call),
                   callState: callState,
                   layoutMode: _currentLayoutMode,
-                  pictureInPictureConfiguration: PictureInPictureConfiguration(
+                  pictureInPictureConfiguration: const PictureInPictureConfiguration(
                       enablePictureInPicture: true,
-                      iOSPiPConfiguration: const IOSPictureInPictureConfiguration(
+                      iOSPiPConfiguration: IOSPictureInPictureConfiguration(
                         ignoreLocalParticipantVideo: false,
                       ),
-                      androidPiPConfiguration: AndroidPictureInPictureConfiguration(
-                        callPictureInPictureBuilder: (context, call, callState) {
-                          final currentUser = locator.get<UserAuthController>().currentUser;
-                          return Container(
-                            color: Colors.black,
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    "In Call",
-                                    style: TextStyle(color: Colors.white, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    currentUser?.name ?? "Unknown Caller",
-                                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ElevatedButton(
-                                    onPressed: _leaveCall,
-                                    style: const ButtonStyle(
-                                        shape: WidgetStatePropertyAll(CircleBorder(side: BorderSide()))),
-                                    child: const Text("End Call"),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      )),
+                      androidPiPConfiguration: AndroidPictureInPictureConfiguration()),
                   callParticipantsBuilder: (context, call, callState) {
+                    if (callState.status.isDisconnected) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                Layout(type: userAuthController.currentUser!.role == 'admin' ? "Teacher" : 'Student')),
+                            (route) => false,
+                      );
+                      showSuccessSnackBar("Meeting finished successful!", 3, context);
+                    }
+
                     return Stack(
                       children: [
                         StreamCallParticipants(
@@ -228,8 +203,8 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                     backgroundColor: Colors.black,
                     call: call,
                     showLeaveCallAction: true,
-                    onLeaveCallTap: _leaveCall,
-                    leadingWidth: 180,
+                    onLeaveCallTap: () => context.read<CallingsCubit>().endMeet(context, call, call.id),
+                    leadingWidth: 120,
                     leading: Row(children: [
                       ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
                       if (!kIsWeb) FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
@@ -237,11 +212,7 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                     title: call.state.valueOrNull!.callParticipants.length > 1
                         ? CallDurationTitle(
                             call: widget.call,
-                            onJoinCall: () async {
-                              // final participants = call.state.valueOrNull?.callParticipants;
-                              // return participants != null && participants.length > 1;
-                              return callState.callParticipants.length > 1;
-                            },
+                            // onJoinCall: () async => callState.callParticipants.length > 1
                           )
                         : const WaitingJoinMeetWidget(),
                   ),
@@ -258,16 +229,18 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                               icon: Icon(Icons.more_vert, color: _moreMenuVisible ? Colors.white : Colors.black),
                               backgroundColor: _moreMenuVisible ? Colors.deepPurple : Colors.white,
                               onPressed: () => _toggleMoreMenu(context)),
-                          ToggleScreenShareOption(
-                            call: call,
-                            localParticipant: localParticipant,
-                            screenShareConstraints: const ScreenShareConstraints(
-                              useiOSBroadcastExtension: true,
-                            ),
-                            enabledScreenShareBackgroundColor: Colors.deepPurple,
-                            disabledScreenShareIcon: Icons.screen_share,
-                            enabledScreenShareIconColor: Colors.white,
-                          ),
+                          userAuthController.currentUser!.role == "admin"
+                              ? ToggleScreenShareOption(
+                                  call: call,
+                                  localParticipant: localParticipant,
+                                  screenShareConstraints: const ScreenShareConstraints(
+                                    useiOSBroadcastExtension: true,
+                                  ),
+                                  enabledScreenShareBackgroundColor: Colors.deepPurple,
+                                  disabledScreenShareIcon: Icons.screen_share,
+                                  enabledScreenShareIconColor: Colors.white,
+                                )
+                              : const SizedBox.shrink(),
                           ToggleMicrophoneOption(
                             call: call,
                             localParticipant: localParticipant,
@@ -349,32 +322,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
     }
   }
 
-  // void _disableWebPiP() => js.context.callMethod('exitPictureInPicture', []);
-
-  // void _showChat(BuildContext context) {
-  //   showModalBottomSheet<dynamic>(
-  //     context: context,
-  //     showDragHandle: true,
-  //     isScrollControlled: true,
-  //     shape: const RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.vertical(
-  //         top: Radius.circular(16),
-  //       ),
-  //     ),
-  //     builder: (_) {
-  //       final size = MediaQuery.sizeOf(context);
-  //       final viewInsets = MediaQuery.viewInsetsOf(context);
-  //
-  //       return AnimatedContainer(
-  //         duration: const Duration(milliseconds: 150),
-  //         height: size.height * 0.6 + viewInsets.bottom,
-  //         padding: EdgeInsets.only(bottom: viewInsets.bottom),
-  //         child: ChatBottomSheet(channel: _channel!),
-  //       );
-  //     },
-  //   );
-  // }
-
   void _showChat(BuildContext context) {
     if (_channel == null || _channel!.state == null) {
       debugPrint("Chat channel is not initialized or state is null");
@@ -417,39 +364,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
               CallParticipantsList(call: widget.call, scrollController: scrollController)));
 
   void _toggleMoreMenu(BuildContext context) => setState(() => _moreMenuVisible = !_moreMenuVisible);
-
-  _customPiP({required Call call, required VoidCallback onResume}) => Positioned(
-        bottom: 20,
-        right: 20,
-        child: GestureDetector(
-          onTap: onResume, // Return to full-screen call
-          child: Container(
-            width: 150,
-            height: 100,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Text(
-                    "In Call",
-                    style: TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Text(
-                    "Tap to Resume",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
 }
 
 /*

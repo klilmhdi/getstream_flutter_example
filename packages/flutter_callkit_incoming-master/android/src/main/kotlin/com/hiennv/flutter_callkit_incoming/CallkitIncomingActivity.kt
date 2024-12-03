@@ -179,6 +179,12 @@ class CallkitIncomingActivity : Activity() {
         tvNumber.text = data?.getString(CallkitConstants.EXTRA_CALLKIT_HANDLE, "")
         tvNumber.visibility = if (isShowCallID == true) View.VISIBLE else View.INVISIBLE
 
+		try {
+			tvNameCaller.setTextColor(Color.parseColor(textColor))
+			tvNumber.setTextColor(Color.parseColor(textColor))
+		} catch (error: Exception) {
+		}
+
         val isShowLogo = data?.getBoolean(CallkitConstants.EXTRA_CALLKIT_IS_SHOW_LOGO, false)
         ivLogo.visibility = if (isShowLogo == true) View.VISIBLE else View.INVISIBLE
 
@@ -188,8 +194,8 @@ class CallkitIncomingActivity : Activity() {
             val headers = data.getSerializable(CallkitConstants.EXTRA_CALLKIT_HEADERS) as HashMap<String, Any?>
             getPicassoInstance(this@CallkitIncomingActivity, headers)
                     .load(avatarUrl)
-                    .placeholder(R.drawable.jeras3)
-                    .error(R.drawable.jeras3)
+                    .placeholder(R.drawable.ic_default_avatar)
+                    .error(R.drawable.ic_default_avatar)
                     .into(ivAvatar)
         }
 
@@ -206,6 +212,12 @@ class CallkitIncomingActivity : Activity() {
         tvAccept.text = if (TextUtils.isEmpty(textAccept)) getString(R.string.text_accept) else textAccept
         val textDecline = data?.getString(CallkitConstants.EXTRA_CALLKIT_TEXT_DECLINE, "")
         tvDecline.text = if (TextUtils.isEmpty(textDecline)) getString(R.string.text_decline) else textDecline
+
+		try {
+			tvAccept.setTextColor(Color.parseColor(textColor))
+			tvDecline.setTextColor(Color.parseColor(textColor))
+		} catch (error: Exception) {
+		}
 
         val backgroundColor = data?.getString(CallkitConstants.EXTRA_CALLKIT_BACKGROUND_COLOR, "#0955fa")
         try {
