@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
-import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
-import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
+import 'package:getstream_flutter_example/features/presentation/view/meet/incoming_call.dart';
+import 'package:getstream_flutter_example/features/presentation/view/meet/outgoing_call.dart';
+import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
-import 'package:getstream_flutter_example/features/presentation/widgets/settings_menu.dart';
+import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide User;
+
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/controllers/user_auth_controller.dart';
-import '../../../data/repo/user_chat_repository.dart';
 import '../home/layout.dart';
 
 class CallScreen extends StatefulWidget {
@@ -28,15 +28,14 @@ class CallScreen extends StatefulWidget {
 }
 
 class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
-  late final _userChatRepo = locator.get<UserChatRepository>();
   final userAuthController = locator.get<UserAuthController>();
 
-  bool _moreMenuVisible = false;
+  final ParticipantLayoutMode _currentLayoutMode = ParticipantLayoutMode.grid;
+  Channel? _channel;
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addObserver(this);
     // Use the connectOptions to configure the call
     final options = widget.connectOptions ?? const CallConnectOptions();
@@ -56,7 +55,6 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     widget.call.leave();
-    _userChatRepo.disconnectUser();
     WidgetsBinding.instance.removeObserver(this);
     StreamVideo.instance.pushNotificationManager?.endAllCalls();
     super.dispose();
@@ -72,8 +70,27 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
         body: StreamCallContainer(
           call: widget.call,
           callConnectOptions: widget.connectOptions,
+          outgoingCallBuilder: (context, call, callState) => CustomOutgoingCallScreen(call: call, callState: callState),
+          incomingCallBuilder: (context, call, callState) => CustomIncomingCallScreen(call: call, callState: callState),
           pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
           callContentBuilder: (BuildContext context, Call call, CallState callState) {
+            if (callState.status.isDisconnected) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  // const CircularProgressIndicator();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Layout(
+                        type: userAuthController.currentUser?.role == 'admin' ? "Teacher" : 'Student',
+                      ),
+                    ),
+                    (route) => false,
+                  );
+                  showSuccessSnackBar("Calling finished successfully!", 3, context);
+                }
+              });
+            }
             return Stack(
               children: [
                 // Able PIP
@@ -83,6 +100,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
                   call: call,
                   onBackPressed: () => StreamPictureInPictureUiKitView(call: widget.call),
                   callState: callState,
+                  layoutMode: _currentLayoutMode,
                   pictureInPictureConfiguration: const PictureInPictureConfiguration(
                       enablePictureInPicture: true,
                       iOSPiPConfiguration: IOSPictureInPictureConfiguration(
@@ -96,8 +114,9 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
                         MaterialPageRoute(
                             builder: (context) =>
                                 Layout(type: userAuthController.currentUser!.role == 'admin' ? "Teacher" : 'Student')),
-                            (route) => false,
+                        (route) => false,
                       );
+                      // Navigator.pop(context);
                       showSuccessSnackBar("Meeting finished successful!", 3, context);
                     }
 
@@ -106,70 +125,80 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
                         StreamCallParticipants(
                           call: call,
                           participants: callState.callParticipants,
+                          layoutMode: _currentLayoutMode,
                         ),
-                        if (_moreMenuVisible) ...[
-                          GestureDetector(
-                              onTap: () => setState(() => _moreMenuVisible = false),
-                              child: Container(color: Colors.black12)),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: SettingsMenu(
-                              call: call,
-                              onAudioOutputChange: (_) => setState(() => _moreMenuVisible = false),
-                              onAudioInputChange: (_) => setState(() => _moreMenuVisible = false),
-                            ),
-                          ),
-                        ],
                       ],
                     );
                   },
                   // appbar controllers
                   callAppBarBuilder: (context, call, callState) => CallAppBar(
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.transparent,
                     call: call,
-                    showLeaveCallAction: true,
-                    onLeaveCallTap: () => context.read<CallingsCubit>().endMeet(context, call, call.id),
-                    leadingWidth: 120,
-                    leading: Row(children: [
-                      if (!kIsWeb) FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
-                    ]),
-                    title: call.state.valueOrNull!.callParticipants.length > 1
-                        ? CallDurationTitle(
-                      call: widget.call,
-                    )
-                        : const WaitingJoinMeetWidget(),
+                    elevation: 0,
+                    showLeaveCallAction: false,
+                    // onLeaveCallTap: () => context.read<MeetingsCubit>().endMeet(context, call, call.id),
+                    leadingWidth: 60,
+                    leading: !kIsWeb ? FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!) : const SizedBox.shrink(),
+                    title: Text(call.id),
+                    actions: [
+                      BadgedCallOption(
+                        callControlOption: CallControlOption(
+                          icon: const Icon(Icons.people),
+                          onPressed: _channel != null ? () => _showParticipants(context) : null,
+                        ),
+                        badgeCount: callState.callParticipants.length,
+                      ),
+                    ],
                   ),
                   // bottom buttons controllers
                   callControlsBuilder: (BuildContext context, Call call, CallState callState) {
                     final localParticipant = callState.localParticipant!;
                     return Container(
-                      padding: const EdgeInsets.only(top: 16, left: 8),
-                      color: Colors.black,
+                      padding: const EdgeInsets.only(top: 4),
+                      color: Colors.transparent,
                       child: SafeArea(
-                        child: Row(children: [
-                          // options
-                          CallControlOption(
-                              icon: Icon(Icons.more_vert, color: _moreMenuVisible ? Colors.white : Colors.black),
-                              backgroundColor: _moreMenuVisible ? Colors.deepPurple : Colors.white,
-                              onPressed: () => _toggleMoreMenu(context)),
-                          ToggleMicrophoneOption(
-                            call: call,
-                            localParticipant: localParticipant,
-                            disabledMicrophoneBackgroundColor: Colors.red,
-                            disabledMicrophoneIconColor: Colors.white,
-                          ),
-                          ToggleCameraOption(
-                            call: call,
-                            localParticipant: localParticipant,
-                            disabledCameraBackgroundColor: Colors.red,
-                            disabledCameraIconColor: Colors.white,
-                          ),
-                        ]),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              ToggleMicrophoneOption(
+                                call: call,
+                                localParticipant: localParticipant,
+                                disabledMicrophoneBackgroundColor: Colors.indigo,
+                                disabledMicrophoneIconColor: Colors.white,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ToggleSpeakerphoneOption(call: call),
+                                    const SizedBox(height: 20),
+                                    LeaveCallOption(
+                                      call: call,
+                                      onLeaveCallTap: () => call.end(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ToggleCameraOption(
+                                call: call,
+                                localParticipant: callState.localParticipant!,
+                                disabledCameraBackgroundColor: Colors.indigo,
+                                disabledCameraIconColor: Colors.white,
+                              ),
+                            ]),
                       ),
                     );
                   },
+                ),
+                Center(
+                  heightFactor: 5,
+                  child: CallDurationTitle(
+                    call: widget.call,
+                  )
                 ),
               ],
             );
@@ -179,129 +208,16 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _toggleMoreMenu(BuildContext context) => setState(() => _moreMenuVisible = !_moreMenuVisible);
+  void _showParticipants(BuildContext context) => showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.2,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) =>
+              CallParticipantsList(call: widget.call, scrollController: scrollController)));
 }
-
-// import 'dart:convert';
-// import 'dart:async';
-//
-// import 'package:flutter/material.dart';
-// import 'package:flutter_callkit_incoming/entities/entities.dart';
-// import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-// import 'package:http/http.dart';
-//
-// class CallingPage extends StatefulWidget {
-//   const CallingPage({super.key});
-//
-//   @override
-//   State<StatefulWidget> createState() {
-//     return CallingPageState();
-//   }
-// }
-//
-// class CallingPageState extends State<CallingPage> {
-//   late CallKitParams? calling;
-//
-//   Timer? _timer;
-//   int _start = 0;
-//
-//   void startTimer() {
-//     const oneSec = Duration(seconds: 1);
-//     _timer = Timer.periodic(
-//       oneSec,
-//           (Timer timer) {
-//         setState(() {
-//           _start++;
-//         });
-//       },
-//     );
-//   }
-//
-//   String intToTimeLeft(int value) {
-//     int h, m, s;
-//     h = value ~/ 3600;
-//     m = ((value - h * 3600)) ~/ 60;
-//     s = value - (h * 3600) - (m * 60);
-//     String hourLeft = h.toString().length < 2 ? '0$h' : h.toString();
-//     String minuteLeft = m.toString().length < 2 ? '0$m' : m.toString();
-//     String secondsLeft = s.toString().length < 2 ? '0$s' : s.toString();
-//     String result = "$hourLeft:$minuteLeft:$secondsLeft";
-//     return result;
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final params = jsonDecode(jsonEncode(
-//         ModalRoute.of(context)!.settings.arguments as Map<dynamic, dynamic>));
-//     print(ModalRoute.of(context)!.settings.arguments);
-//     calling = CallKitParams.fromJson(params);
-//
-//     var timeDisplay = intToTimeLeft(_start);
-//
-//     return Scaffold(
-//       body: SizedBox(
-//         height: MediaQuery.of(context).size.height,
-//         width: double.infinity,
-//         child: Center(
-//           child: Column(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             crossAxisAlignment: CrossAxisAlignment.center,
-//             children: [
-//               Text(timeDisplay),
-//               const Text('Calling...'),
-//               TextButton(
-//                 style: ButtonStyle(
-//                   foregroundColor:
-//                   MaterialStateProperty.all<Color>(Colors.blue),
-//                 ),
-//                 onPressed: () async {
-//                   if (calling != null) {
-//                     await makeFakeConnectedCall(calling!.id!);
-//                     startTimer();
-//                   }
-//                 },
-//                 child: const Text('Fake Connected Call'),
-//               ),
-//               TextButton(
-//                 style: ButtonStyle(
-//                   foregroundColor:
-//                   MaterialStateProperty.all<Color>(Colors.blue),
-//                 ),
-//                 onPressed: () async {
-//                   if (calling != null) {
-//                     await makeEndCall(calling!.id!);
-//                     calling = null;
-//                   }
-//                   NavigationService.instance.goBack();
-//                   await requestHttp('END_CALL');
-//                 },
-//                 child: const Text('End Call'),
-//               )
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-//
-//   Future<void> makeFakeConnectedCall(id) async {
-//     await FlutterCallkitIncoming.setCallConnected(id);
-//   }
-//
-//   Future<void> makeEndCall(id) async {
-//     await FlutterCallkitIncoming.endCall(id);
-//   }
-//
-//   //check with https://webhook.site/#!/2748bc41-8599-4093-b8ad-93fd328f1cd2
-//   Future<void> requestHttp(content) async {
-//     get(Uri.parse(
-//         'https://webhook.site/2748bc41-8599-4093-b8ad-93fd328f1cd2?data=$content'));
-//   }
-//
-//   @override
-//   void dispose() {
-//     super.dispose();
-//     _timer?.cancel();
-//     if (calling != null) FlutterCallkitIncoming.endCall(calling!.id!);
-//   }
-// }

@@ -51,7 +51,7 @@ class Badge extends StatelessWidget {
           count.toString(),
           textAlign: TextAlign.center,
           style: const TextStyle(
-            color: Colors.black,
+            color: Colors.white,
             fontSize: 10,
           ),
         ),

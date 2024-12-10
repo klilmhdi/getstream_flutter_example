@@ -5,8 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
-import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
-import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
@@ -14,12 +12,12 @@ import 'package:getstream_flutter_example/features/presentation/widgets/chat_she
 import 'package:getstream_flutter_example/features/presentation/widgets/settings_menu.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide User;
-// import 'dart:js' as js;
 
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/controllers/user_auth_controller.dart';
 import '../../../data/repo/app_preferences.dart';
 import '../../../data/repo/user_chat_repository.dart';
+import '../../manage/meet/meet_cubit.dart';
 import '../home/layout.dart';
 
 class MeetScreen extends StatefulWidget {
@@ -43,9 +41,10 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
   Channel? _channel;
   ParticipantLayoutMode _currentLayoutMode = ParticipantLayoutMode.grid;
   bool _moreMenuVisible = false;
-  RtcLocalAudioTrack? _microphoneTrack;
-  RtcLocalCameraTrack? _cameraTrack;
-  final _isTeacher = FirebaseServices().checkIfCurrentUserIsTeacher();
+
+  // RtcLocalAudioTrack? _microphoneTrack;
+  // RtcLocalCameraTrack? _cameraTrack;
+  // final _isTeacher = FirebaseServices().checkIfCurrentUserIsTeacher();
 
   @override
   void initState() {
@@ -144,6 +143,23 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
           callConnectOptions: widget.connectOptions,
           pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
           callContentBuilder: (BuildContext context, Call call, CallState callState) {
+            if (callState.status.isDisconnected) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  // const CircularProgressIndicator();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Layout(
+                        type: userAuthController.currentUser?.role == 'admin' ? "Teacher" : 'Student',
+                      ),
+                    ),
+                    (route) => false,
+                  );
+                  showSuccessSnackBar("Meeting finished successfully!", 3, context);
+                }
+              });
+            }
             return Stack(
               children: [
                 // Able PIP
@@ -167,8 +183,9 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                         MaterialPageRoute(
                             builder: (context) =>
                                 Layout(type: userAuthController.currentUser!.role == 'admin' ? "Teacher" : 'Student')),
-                            (route) => false,
+                        (route) => false,
                       );
+                      // Navigator.pop(context);
                       showSuccessSnackBar("Meeting finished successful!", 3, context);
                     }
 
@@ -203,18 +220,24 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                     backgroundColor: Colors.black,
                     call: call,
                     showLeaveCallAction: true,
-                    onLeaveCallTap: () => context.read<CallingsCubit>().endMeet(context, call, call.id),
                     leadingWidth: 120,
                     leading: Row(children: [
                       ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
                       if (!kIsWeb) FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
                     ]),
                     title: call.state.valueOrNull!.callParticipants.length > 1
-                        ? CallDurationTitle(
+                        ? MeetDurationTitle(
                             call: widget.call,
                             // onJoinCall: () async => callState.callParticipants.length > 1
                           )
                         : const WaitingJoinMeetWidget(),
+                    actions: [
+                      LeaveCallOption(
+                        call: call,
+                        icon: userAuthController.currentUser!.role == 'admin' ? Icons.call_end : Icons.logout,
+                        onLeaveCallTap: () => context.read<MeetingsCubit>().endMeet(context, call, call.id),
+                      )
+                    ],
                   ),
                   // bottom buttons controllers
                   callControlsBuilder: (BuildContext context, Call call, CallState callState) {
@@ -281,46 +304,46 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _leaveCall() async {
-    print("Initiating onLeaveCallTap...");
-    await _cameraTrack?.stop();
-    await _microphoneTrack?.stop();
-    try {
-      if (widget.call.state.value.status.isActive) {
-        if (await _isTeacher) {
-          print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Navigating to Teacher layout...");
-          await context
-              .read<CallingsCubit>()
-              .endMeetFromTeacher(context, widget.call.id, widget.call)
-              .then((value) async {
-            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Leave from student...");
-            await context.read<CallingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
-          });
-        } else {
-          print("Navigating to Student layout...");
-          if (!mounted) return;
-          await context.read<CallingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
-        }
-      }
-    } catch (e) {
-      print("Error in role check or navigation: $e");
-    }
-
-    try {
-      if (widget.call.state.value.status.isActive) {
-        await widget.call.reject(reason: CallRejectReason.cancel());
-      }
-    } catch (e) {
-      print("Error rejecting the call: $e");
-    }
-
-    try {
-      await widget.call.end();
-      await widget.call.leave();
-    } catch (e) {
-      print("Error ending or leaving the call: $e");
-    }
-  }
+  // void _leaveCall() async {
+  //   print("Initiating onLeaveCallTap...");
+  //   await _cameraTrack?.stop();
+  //   await _microphoneTrack?.stop();
+  //   try {
+  //     if (widget.call.state.value.status.isActive) {
+  //       if (await _isTeacher) {
+  //         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Navigating to Teacher layout...");
+  //         await context
+  //             .read<MeetingsCubit>()
+  //             .endMeetFromTeacher(context, widget.call.id, widget.call)
+  //             .then((value) async {
+  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Leave from student...");
+  //           await context.read<MeetingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
+  //         });
+  //       } else {
+  //         print("Navigating to Student layout...");
+  //         if (!mounted) return;
+  //         await context.read<MeetingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print("Error in role check or navigation: $e");
+  //   }
+  //
+  //   try {
+  //     if (widget.call.state.value.status.isActive) {
+  //       await widget.call.reject(reason: CallRejectReason.cancel());
+  //     }
+  //   } catch (e) {
+  //     print("Error rejecting the call: $e");
+  //   }
+  //
+  //   try {
+  //     await widget.call.end();
+  //     await widget.call.leave();
+  //   } catch (e) {
+  //     print("Error ending or leaving the call: $e");
+  //   }
+  // }
 
   void _showChat(BuildContext context) {
     if (_channel == null || _channel!.state == null) {

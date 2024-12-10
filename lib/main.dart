@@ -1,19 +1,19 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
-import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:getstream_flutter_example/features/presentation/view/splash_screen.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide User;
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionState;
+
 import 'features/presentation/view/auth/signin.dart';
 
 void main() async {
@@ -65,9 +65,10 @@ class _MainAppState extends State<MainApp> {
       providers: [
         BlocProvider<RegisterCubit>(create: (context) => RegisterCubit()),
         BlocProvider<FetchUsersCubit>(
-            create: (context) => FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth)
+            create: (context) => FetchUsersCubit()
               ..fetchUsersBasedOnRole()
               ..fetchStudents()),
+        BlocProvider(create: (context) => MeetingsCubit()),
         BlocProvider<CallingsCubit>(create: (context) => CallingsCubit())
       ],
       child: MaterialApp(

@@ -1,52 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 import 'call_screen.dart';
 
-class IncomingCallScreen extends StatelessWidget {
+class CustomIncomingCallScreen extends StatefulWidget {
   final Call call;
+  final CallState callState;
 
-  const IncomingCallScreen({required this.call});
+  const CustomIncomingCallScreen({super.key, required this.call, required this.callState});
 
   @override
+  State<CustomIncomingCallScreen> createState() => _IncomingCallScreenState();
+}
+
+class _IncomingCallScreenState extends State<CustomIncomingCallScreen> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.call, size: 80, color: Colors.green),
-            const SizedBox(height: 16),
-            Text(
-              'Incoming Call',
-              style: const TextStyle(fontSize: 20),
+    return BlocProvider(
+      create: (context) => CallingsCubit(),
+      child: BlocBuilder<CallingsCubit, CallingsState>(
+        builder: (context, state) => Scaffold(
+          body: StreamCallContainer(
+            call: widget.call,
+            incomingCallBuilder: (context, call, callState) => StreamIncomingCallContent(
+              call: call,
+              callState: callState,
+              onAcceptCallTap: () => context.read<CallingsCubit>().acceptCall(context, call.id, call),
+              onDeclineCallTap: () => context.read<CallingsCubit>().rejectCall(context, widget.call.id, widget.call).then((_){
+                showSuccessSnackBar("Call is declined!", 3, context);
+              }),
             ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.call_end),
-                  label: const Text('Reject'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: () async {
-                    await call.reject();
-                    Navigator.pop(context);
-                  },
-                ),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.call),
-                  label: const Text('Accept'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  onPressed: () async {
-                    await call.accept();
-                    Navigator.pushAndRemoveUntil(
-                        context, MaterialPageRoute(builder: (context) => CallScreen(call: call)), (route) => false);
-                  },
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

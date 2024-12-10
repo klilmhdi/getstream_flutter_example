@@ -151,7 +151,7 @@ class AppConsumers {
       );
 
       Navigator.push(context,
-          MaterialPageRoute(builder: (context) => CallScreen(call: extra.call, connectOptions: extra.connectOptions)));
+          MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
     }, failure: (error) {
       debugPrint('*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error consuming incoming call: $error');
     });
@@ -175,7 +175,7 @@ class AppConsumers {
           Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => CallScreen(call: extra.call, connectOptions: extra.connectOptions)));
+                  builder: (context) => CallScreen(call: extra.call)));
         },
       ),
     );

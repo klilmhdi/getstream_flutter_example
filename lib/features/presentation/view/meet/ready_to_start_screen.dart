@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
-import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
-import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
-import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 import '../../manage/fetch_users/fetch_users_cubit.dart';
@@ -46,7 +44,7 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
       options = options.copyWith(microphone: TrackOption.disabled());
     }
 
-    context.read<CallingsCubit>().joinMeet(context, widget.call.id, connectOptions: options);
+    context.read<MeetingsCubit>().joinMeet(context, widget.call.id, connectOptions: options);
   }
 
   // end meet function
@@ -66,7 +64,7 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
     if (isTeacher) {
       try {
         if (!mounted) return;
-        await context.read<CallingsCubit>().endMeetFromTeacher(context, widget.call.id, widget.call);
+        await context.read<MeetingsCubit>().endMeetFromTeacher(context, widget.call.id, widget.call);
         print("Call successfully ended in Firestore");
         // showSuccessSnackBar("Success: isActive set to false", 4, context);
       } catch (error) {

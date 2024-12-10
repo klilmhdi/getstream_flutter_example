@@ -25,7 +25,7 @@ class _LayoutState extends State<Layout> {
   @override
   void initState() {
     super.initState();
-    _fetchUsersCubit = FetchUsersCubit(firestore: FirebaseServices().firestore, auth: FirebaseServices().auth);
+    _fetchUsersCubit = FetchUsersCubit();
     _userAuthController = locator.get<UserAuthController>();
   }
 

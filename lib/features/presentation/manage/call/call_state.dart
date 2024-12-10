@@ -9,28 +9,52 @@ abstract class CallingsState extends Equatable {
 
 class CallInitial extends CallingsState {}
 
-// calling states
 class CallLoadingState extends CallingsState {}
+
+class LoadingIncomingCallState extends CallingsState {}
 
 class CallCreatedState extends CallingsState {
   final Call call;
+  final CallState callState;
 
-  const CallCreatedState({required this.call});
+  const CallCreatedState({required this.call, required this.callState});
 
   @override
-  List<Object?> get props => [call];
+  List<Object?> get props => [call, callState];
 }
 
 class LoadCallToStudentState extends CallingsState {}
 
-class SuccessSendCallToStudentState extends CallingsState {}
+class SuccessSendCallToStudentState extends CallingsState {
+  final Call call;
+  final CallState callState;
+  final CallStatus callStatus = CallStatus.outgoing(acceptedByCallee: true);
 
-class FailedSendCallToStudentState extends CallingsState {}
+  SuccessSendCallToStudentState({required this.call, required this.callState});
+}
+
+class FailedSendCallToStudentState extends CallingsState {
+  final String error;
+
+  const FailedSendCallToStudentState({required this.error});
+}
 
 class IncomingCallState extends CallingsState {
-  final Map<String, dynamic> callData;
+  final Call call;
+  // final CallState callState;
+  final CallStatus callStatus = CallStatus.incoming(acceptedByMe: true);
 
-  const IncomingCallState({required this.callData});
+  IncomingCallState({
+    required this.call,
+    // required this.callState,
+    // required this.callStatus,
+  });
+}
+
+class FailedReceiveIncomingCallState extends CallingsState {
+  final String errorMessage;
+
+  const FailedReceiveIncomingCallState({required this.errorMessage});
 }
 
 class CallAcceptedState extends CallingsState {
@@ -56,77 +80,4 @@ class CallErrorState extends CallingsState {
 
   @override
   List<Object?> get props => [message];
-}
-
-// meeting states
-class MeetingLoadingState extends CallingsState {}
-
-class MeetingLoadingJoinStudentState extends CallingsState {}
-
-class MeetingCreatedState extends CallingsState {
-  final Call meet;
-
-  const MeetingCreatedState({required this.meet});
-
-  @override
-  List<Object?> get props => [meet];
-}
-
-class MeetingJoinedState extends CallingsState {
-  final Call call;
-  final CallConnectOptions? connectOptions;
-
-  const MeetingJoinedState({required this.call, required this.connectOptions});
-
-  @override
-  List<Object?> get props => [call, connectOptions];
-}
-
-class MeetingEndedState extends CallingsState {
-  final String meetId;
-  final Duration duration;
-
-  const MeetingEndedState({required this.meetId, required this.duration});
-
-  @override
-  List<Object?> get props => [meetId, duration];
-}
-
-class MeetingErrorState extends CallingsState {
-  final String message;
-
-  const MeetingErrorState(this.message);
-
-  @override
-  List<Object?> get props => [message];
-}
-
-class MeetingDurationUpdatedState extends CallingsState {
-  final Duration duration;
-
-  const MeetingDurationUpdatedState({required this.duration});
-
-  @override
-  List<Object?> get props => [duration];
-}
-
-// active meets states
-class ActiveMeetsLoadingState extends CallingsState {}
-
-class ActiveMeetsFetchedState extends CallingsState {
-  final List<MeetingModel> activeMeets;
-
-  const ActiveMeetsFetchedState({required this.activeMeets});
-
-  @override
-  List<Object> get props => [activeMeets];
-}
-
-class ActiveMeetsFailedState extends CallingsState {
-  final String error;
-
-  const ActiveMeetsFailedState({required this.error});
-
-  @override
-  List<Object> get props => [error];
 }

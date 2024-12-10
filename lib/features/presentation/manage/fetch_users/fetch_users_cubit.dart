@@ -1,17 +1,19 @@
-import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/features/data/models/user_model.dart';
-import 'package:meta/meta.dart';
+import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 
 part 'fetch_users_state.dart';
 
 class FetchUsersCubit extends Cubit<FetchUsersState> {
-  final FirebaseFirestore firestore;
-  final FirebaseAuth auth;
+  FetchUsersCubit() : super(FetchUsersInitial());
 
-  FetchUsersCubit({required this.firestore, required this.auth}) : super(FetchUsersInitial());
+  static FetchUsersCubit get(context) => BlocProvider.of(context, listen: false);
+
+  final firestore = FirebaseServices().firestore;
+  final auth = FirebaseServices().auth;
 
   // Fetch the current user details
   Future<void> fetchCurrentUser() async {
