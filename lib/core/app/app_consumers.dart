@@ -1,23 +1,21 @@
-import 'package:bloc/bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
-import 'package:stream_video_push_notification/stream_video_push_notification.dart';
-import 'package:uuid/uuid.dart';
+import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionState;
 
 import '../../features/data/repo/app_preferences.dart';
 import '../../features/data/services/token_service.dart';
+import '../../features/presentation/manage/call/call_cubit.dart';
 import '../../features/presentation/view/meet/call_screen.dart';
+import '../../features/presentation/view/meet/incoming_call.dart';
 import '../../firebase_options.dart';
 import '../di/injector.dart';
-import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionState;
-
 import '../utils/bloc_observer.dart';
 import '../utils/controllers/user_auth_controller.dart';
 
@@ -119,14 +117,6 @@ class AppConsumers {
     return streamVideo.handleVoipPushNotification(message.data);
   }
 
-  // push notification
-  void initPushNotificationManagerIfAvailable(BuildContext context) {
-    if (!locator.isRegistered<StreamVideo>()) return;
-
-    _observeFcmMessages();
-    observeCallKitEvents(context);
-  }
-
   // consume incoming call
   Future<void> consumeIncomingCall(context) async {
     if (!locator.isRegistered<StreamVideo>()) return;
@@ -150,11 +140,18 @@ class AppConsumers {
         connectOptions: null,
       );
 
-      Navigator.push(context,
-          MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
+      Navigator.push(context, MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
     }, failure: (error) {
       debugPrint('*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error consuming incoming call: $error');
     });
+  }
+
+  // push notification
+  void initPushNotificationManagerIfAvailable(BuildContext context) {
+    if (!locator.isRegistered<StreamVideo>()) return;
+
+    _observeFcmMessages();
+    observeCallKitEvents(context);
   }
 
   // observer callkit
@@ -172,22 +169,18 @@ class AppConsumers {
             connectOptions: null,
           );
 
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => CallScreen(call: extra.call)));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
         },
       ),
     );
   }
 
   /// private functions
-  // observer FCM
+// observer FCM
   _observeFcmMessages() {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     compositeSubscription.add(
       FirebaseMessaging.onMessage.listen(handleRemoteMessage),
     );
   }
-
 }

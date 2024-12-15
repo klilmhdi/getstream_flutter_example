@@ -36,7 +36,6 @@
             android:exported="true"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|smallestScreenSize"
             android:supportsPictureInPicture="true"
-            android:enableOnBackInvokedCallback="true"
             android:hardwareAccelerated="true"
             android:launchMode="singleInstance"
             android:resizeableActivity="true"

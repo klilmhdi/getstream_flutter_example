@@ -1,14 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/incoming_call.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/outgoing_call.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide User;
 
+import '../../../../core/app/app_consumers.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/controllers/user_auth_controller.dart';
 import '../home/layout.dart';
@@ -56,6 +55,7 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   void dispose() {
     widget.call.leave();
     WidgetsBinding.instance.removeObserver(this);
+    AppConsumers().compositeSubscription.cancel();
     StreamVideo.instance.pushNotificationManager?.endAllCalls();
     super.dispose();
   }
@@ -70,8 +70,10 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
         body: StreamCallContainer(
           call: widget.call,
           callConnectOptions: widget.connectOptions,
-          outgoingCallBuilder: (context, call, callState) => CustomOutgoingCallScreen(call: call, callState: callState),
-          incomingCallBuilder: (context, call, callState) => CustomIncomingCallScreen(call: call, callState: callState),
+          // outgoingCallBuilder: (context, call, callState) => CustomOutgoingCallScreen(call: call, callState: callState),
+          // incomingCallBuilder: (context, call, callState) => CustomIncomingCallScreen(call: call),
+          // outgoingCallBuilder: (context, call, callState) => const Center(child: Text("Connecting...")),
+          // incomingCallBuilder: (context, call, callState) => const Center(child: Text("Incoming Call...")),
           pictureInPictureConfiguration: const PictureInPictureConfiguration(enablePictureInPicture: true),
           callContentBuilder: (BuildContext context, Call call, CallState callState) {
             if (callState.status.isDisconnected) {
@@ -138,7 +140,9 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
                     showLeaveCallAction: false,
                     // onLeaveCallTap: () => context.read<MeetingsCubit>().endMeet(context, call, call.id),
                     leadingWidth: 60,
-                    leading: !kIsWeb ? FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!) : const SizedBox.shrink(),
+                    leading: !kIsWeb
+                        ? FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!)
+                        : const SizedBox.shrink(),
                     title: Text(call.id),
                     actions: [
                       BadgedCallOption(
@@ -195,11 +199,10 @@ class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
                   },
                 ),
                 Center(
-                  heightFactor: 5,
-                  child: CallDurationTitle(
-                    call: widget.call,
-                  )
-                ),
+                    heightFactor: 5,
+                    child: CallDurationTitle(
+                      call: widget.call,
+                    )),
               ],
             );
           },

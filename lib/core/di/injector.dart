@@ -44,7 +44,7 @@ Future<void> _backgroundVoipCallHandler() async {
         name: 'flutter-apn',
       ),
       androidPushProvider: const StreamVideoPushProvider.firebase(
-        name: 'flutter-firebase',
+        name: 'dce79c50fba4305679e58741a0370f1590e394b9',
       ),
       pushParams: const StreamVideoPushParams(
         appName: "GetStream Flutter Example",
@@ -180,7 +180,7 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
         name: 'flutter-apn',
       ),
       androidPushProvider: const StreamVideoPushProvider.firebase(
-        name: 'flutter-firebase',
+        name: 'dce79c50fba4305679e58741a0370f1590e394b9',
       ),
       pushParams: const StreamVideoPushParams(
         appName: "GetStream Flutter Example",

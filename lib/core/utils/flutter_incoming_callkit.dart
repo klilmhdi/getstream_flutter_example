@@ -16,7 +16,7 @@ class CallKitServices {
       headers: <String, dynamic>{'apiKey': 'Abc@123!', 'platform': 'flutter'},
       android: const AndroidParams(
           isShowFullLockedScreen: true,
-          ringtonePath: 'assets/ring.mp3',
+          // ringtonePath: 'assets/ring.mp3',
           actionColor: "#640D5F",
           backgroundUrl: AppConsts.studentNetworkImage,
           isCustomNotification: true,
@@ -53,25 +53,27 @@ class CallKitServices {
       type: 0,
       textAccept: 'Accept',
       textDecline: 'Decline',
+      extra: <String, dynamic>{'userId': teacherId},
+      headers: <String, dynamic>{
+        'apiKey': 'Abc@123!',
+        'platform': 'flutter',
+      },
       missedCallNotification: const NotificationParams(
         showNotification: true,
         isShowCallback: true,
         subtitle: 'Missed call',
         callbackText: 'Call back',
       ),
-      extra: <String, dynamic>{'userId': teacherId},
-      headers: <String, dynamic>{'apiKey': 'Abc@123!', 'platform': 'flutter'},
       android: const AndroidParams(
+          // isCustomNotification: true,
           isShowFullLockedScreen: true,
-          isCustomNotification: true,
-          ringtonePath: 'assets/ring.mp3',
           actionColor: "#640D5F",
           backgroundUrl: AppConsts.teacherNetworkImage,
           isShowCallID: true,
           textColor: '#000000'),
-      ios: const IOSParams(
+      ios: IOSParams(
         iconName: 'CallKitLogo',
-        handleType: '',
+        handleType: callId,
         supportsVideo: true,
         maximumCallGroups: 2,
         maximumCallsPerCallGroup: 1,
@@ -83,7 +85,7 @@ class CallKitServices {
         supportsHolding: true,
         supportsGrouping: false,
         supportsUngrouping: false,
-        ringtonePath: 'assets/ring.mp3',
+        // ringtonePath: 'assets/ring.mp3',
       ),
     );
 

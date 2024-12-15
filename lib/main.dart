@@ -39,8 +39,8 @@ class _MainAppState extends State<MainApp> {
     AppConsumers()
       // ..initializeServices(context)
       ..initPushNotificationManagerIfAvailable(context)
-      ..consumeIncomingCall(context);
-    // ..initPushNotificationManagerIfAvailable();
+      ..consumeIncomingCall(context)
+    ..initPushNotificationManagerIfAvailable(context);
   }
 
   @override

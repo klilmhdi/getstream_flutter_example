@@ -29,6 +29,14 @@ class FirebaseServices {
     }
   }
 
+  ///==================== > Save FCM Token to
+  Future<void> saveFcmToken(String userId) async {
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    if (fcmToken != null) {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({'fcmToken': fcmToken});
+    }
+  }
+
   ///==================== > Upload user data to FirebaseFirestore
   Future<void> uploadUserDataToFirebase(
     String uid, {

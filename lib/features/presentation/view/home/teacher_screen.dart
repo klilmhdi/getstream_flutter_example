@@ -4,14 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
-import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_state.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/incoming_call.dart';
 import 'package:getstream_flutter_example/features/presentation/view/meet/outgoing_call.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
@@ -75,6 +73,7 @@ class _TeacherScreenState extends State<TeacherScreen> {
   @override
   void dispose() {
     AppConsumers().compositeSubscription.cancel();
+    context.read<CallingsCubit>().streamVideo.pushNotificationManager!.endAllCalls();
     super.dispose();
   }
 
@@ -90,10 +89,9 @@ class _TeacherScreenState extends State<TeacherScreen> {
     print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Teacher ID: ${locator<UserAuthController>().currentUser?.id}");
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => CallingsCubit()..initiateCall(context, teacherId, teacherName)),
+        BlocProvider(create: (context) => CallingsCubit()),
         BlocProvider(create: (context) => MeetingsCubit()..initiateMeet(context, teacherId, teacherName!)),
-        BlocProvider(
-            create: (context) => FetchUsersCubit()..fetchStudents()),
+        BlocProvider(create: (context) => FetchUsersCubit()..fetchStudents()),
       ],
       child: BlocBuilder<CallingsCubit, CallingsState>(
         builder: (context, state) {
@@ -151,32 +149,18 @@ class _TeacherScreenState extends State<TeacherScreen> {
 
                             final teacherId = locator.get<UserAuthController>().currentUser?.id ?? '';
                             final teacherName = locator.get<UserAuthController>().currentUser?.name ?? 'Teacher';
+                            final teacherImage = locator.get<UserAuthController>().currentUser?.image ?? '';
                             final studentId = student['userId'];
                             final studentName = student['name'];
 
                             try {
-                              // Initiate the call creation
-                              await cubit
-                                  .initiateCall(
-                                context,
-                                teacherId,
-                                teacherName,
-                                studentId: studentId,
-                                studentName: studentName,
-                              )
+                              await cubit.initiateCall(context, teacherId, teacherName, teacherImage, studentId: studentId, studentName: studentName)
                                   .then((value) {
-                                // Check the state for CallCreatedState
                                 if (cubit.state is CallCreatedState) {
-                                  final state = cubit.state as CallCreatedState;
+                                  debugPrint("Call initiation Success");
 
-                                  // Send call notification to the student
-                                  cubit.sendCallToStudent(
-                                    context,
-                                    studentId,
-                                    teacherName,
-                                    state.call,
-                                    state.callState,
-                                  );
+                                  final state = cubit.state as CallCreatedState;
+                                  cubit.sendCallToStudent(context, studentId, studentName, teacherName, teacherId, teacherImage, state.call, state.callState);
                                 } else {
                                   debugPrint("Call initiation failed with state: ${cubit.state}");
                                 }
