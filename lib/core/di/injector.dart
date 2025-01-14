@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:getstream_flutter_example/core/utils/consts/assets.dart';
 import 'package:getstream_flutter_example/core/utils/consts/log_config.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/repo/app_preferences.dart';
@@ -44,11 +45,21 @@ Future<void> _backgroundVoipCallHandler() async {
         name: 'flutter-apn',
       ),
       androidPushProvider: const StreamVideoPushProvider.firebase(
-        name: 'dce79c50fba4305679e58741a0370f1590e394b9',
+        name: 'flutter-firebase', // this value is wrong
       ),
-      pushParams: const StreamVideoPushParams(
-        appName: "GetStream Flutter Example",
-        ios: IOSParams(iconName: 'IconMask'),
+      pushParams: StreamVideoPushParams(
+          appName: "GetStream Flutter Example",
+          ios: const IOSParams(iconName: 'IconMask'),
+          android: const AndroidParams(),
+          missedCallNotification: const NotificationParams(
+            showNotification: true,
+            subtitle: 'Missed Call',
+            callbackText: 'Call Back',
+          ),
+          textDecline: "Decline",
+          type: 0,
+          nameCaller: "callerName",
+          avatar: AppConsts.teacherNetworkImage,
       ),
       registerApnDeviceToken: true,
     ),
@@ -180,12 +191,22 @@ StreamVideo _initStreamVideo(String apiKey, User user, {String? initialToken, To
         name: 'flutter-apn',
       ),
       androidPushProvider: const StreamVideoPushProvider.firebase(
-        name: 'dce79c50fba4305679e58741a0370f1590e394b9',
+        name: 'flutter-firebase', // this value is wrong
       ),
-      pushParams: const StreamVideoPushParams(
-        appName: "GetStream Flutter Example",
-        ios: IOSParams(iconName: 'IconMask'),
-      ),
+      pushParams: StreamVideoPushParams(
+          appName: "GetStream Flutter Example",
+          ios: const IOSParams(iconName: 'IconMask'),
+          android: const AndroidParams(),
+          missedCallNotification: const NotificationParams(
+            showNotification: true,
+            subtitle: 'Missed Call',
+            callbackText: 'Call Back',
+          ),
+          textDecline: "Decline",
+          type: 0,
+          nameCaller: user.name,
+          handle: user.id.substring(0, 4),
+          avatar: user.image),
       backgroundVoipCallHandler: _backgroundVoipCallHandler,
     ),
   );

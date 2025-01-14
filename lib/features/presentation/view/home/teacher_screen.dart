@@ -5,16 +5,18 @@ import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/audio_room/audio_room_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_state.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/live_stream/live_stream_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/outgoing_call.dart';
+import 'package:getstream_flutter_example/features/presentation/view/getstream_service/calling/call_screen.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter_background.dart';
 
-import '../meet/ready_to_start_screen.dart';
+import '../auth/signin.dart';
 
 class TeacherScreen extends StatefulWidget {
   const TeacherScreen({super.key});
@@ -24,8 +26,11 @@ class TeacherScreen extends StatefulWidget {
 }
 
 class _TeacherScreenState extends State<TeacherScreen> {
+  late final _userAuthController;
+
   @override
   void initState() {
+    _userAuthController = locator.get<UserAuthController>();
     StreamBackgroundService.init(
       StreamVideo.instance,
       onButtonClick: (call, type, serviceType) async {
@@ -48,32 +53,9 @@ class _TeacherScreenState extends State<TeacherScreen> {
     super.initState();
   }
 
-  // _makeCall(BuildContext context, {required String studentName, required String studentId}) async {
-  //   final teacherId = locator.get<UserAuthController>().currentUser?.id ?? '';
-  //   final teacherName = locator.get<UserAuthController>().currentUser?.name ?? 'Teacher';
-  //   final cubit = context.read<CallingsCubit>();
-  //
-  //   try {
-  //     await cubit
-  //         .initiateCall(context, teacherId, teacherName, studentId: studentId, studentName: studentName)
-  //         .then((value) async {
-  //       // Check the state's emitted after initiating the call
-  //       if (cubit.state is CallCreatedState) {
-  //         await cubit.createCall(context, teacherId, studentId, teacherName).then((value) {});
-  //       } else {
-  //         debugPrint('Call initiation failed with state: ${cubit.state}');
-  //       }
-  //     });
-  //   } catch (e, stacktrace) {
-  //     debugPrint('Error during _makeCall: $e');
-  //     debugPrint('Stacktrace: $stacktrace');
-  //   }
-  // }
-
   @override
   void dispose() {
-    AppConsumers().compositeSubscription.cancel();
-    context.read<CallingsCubit>().streamVideo.pushNotificationManager!.endAllCalls();
+    // CallingsCubit().close();
     super.dispose();
   }
 
@@ -84,30 +66,21 @@ class _TeacherScreenState extends State<TeacherScreen> {
         : FirebaseServices().auth.currentUser?.uid ?? "";
 
     final teacherName = locator<UserAuthController>().currentUser?.name.toString();
-
+    final currentUser = _userAuthController.currentUser;
+    print(">>>>>>>>>>>>>Current User: $currentUser");
     print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Teacher name: $teacherName");
     print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Teacher ID: ${locator<UserAuthController>().currentUser?.id}");
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (context) => CallingsCubit()),
-        BlocProvider(create: (context) => MeetingsCubit()..initiateMeet(context, teacherId, teacherName!)),
+        BlocProvider(create: (context) => LiveStreamCubit()),
+        BlocProvider(create: (context) => MeetingsCubit()),
+        BlocProvider(create: (context) => AudioRoomCubit()),
         BlocProvider(create: (context) => FetchUsersCubit()..fetchStudents()),
       ],
       child: BlocBuilder<CallingsCubit, CallingsState>(
         builder: (context, state) {
-          if (state is SuccessSendCallToStudentState) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CustomOutgoingCallScreen(
-                    call: state.call,
-                    callState: state.callState,
-                  ),
-                ),
-              );
-            });
-          } else if (state is FailedSendCallToStudentState) {
+          if (state is FailedSendCallToStudentState) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to send call: ${state.error}')),
@@ -115,6 +88,52 @@ class _TeacherScreenState extends State<TeacherScreen> {
             });
           }
           return Scaffold(
+            appBar: AppBar(
+              elevation: 0,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              leading: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: ClipOval(
+                  child: FadeInImage(
+                    image: NetworkImage(currentUser?.image ?? "images"),
+                    placeholder: const AssetImage('assets/ic_launcher_foreground.png'),
+                    imageErrorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.supervised_user_circle_sharp);
+                    },
+                    fit: BoxFit.cover,
+                    width: 80,
+                    height: 80,
+                  ),
+                ),
+              ),
+              titleSpacing: 4,
+              centerTitle: false,
+              title: Text(
+                currentUser?.name ?? "Empty Name",
+                style: const TextStyle(fontSize: 25, color: CupertinoColors.black),
+              ),
+              actions: [
+                BlocBuilder<LiveStreamCubit, LiveStreamState>(
+                  builder: (context, state) => IconButton(
+                    icon: const Icon(Icons.live_tv),
+                    onPressed: () async =>
+                        context.read<LiveStreamCubit>().initiateLiveStream(context, teacherId, teacherName!),
+                  ),
+                ),
+                BlocBuilder<MeetingsCubit, MeetingState>(
+                  builder: (context, state) => IconButton(
+                    icon: const Icon(Icons.video_call),
+                    onPressed: () async => context.read<MeetingsCubit>().initiateMeet(context, teacherId, teacherName!),
+                  ),
+                ),
+                BlocBuilder<AudioRoomCubit, AudioRoomState>(
+                  builder: (context, state) => IconButton(
+                    icon: const Icon(Icons.multitrack_audio),
+                    onPressed: () async {},
+                  ),
+                ),
+              ],
+            ),
             body: BlocBuilder<FetchUsersCubit, FetchUsersState>(
               builder: (context, state) {
                 if (state is LoadingStudentFetchState) {
@@ -154,13 +173,27 @@ class _TeacherScreenState extends State<TeacherScreen> {
                             final studentName = student['name'];
 
                             try {
-                              await cubit.initiateCall(context, teacherId, teacherName, teacherImage, studentId: studentId, studentName: studentName)
+                              await cubit
+                                  .initiateCall(context, teacherId, teacherName, teacherImage,
+                                      studentId: studentId, studentName: studentName)
                                   .then((value) {
                                 if (cubit.state is CallCreatedState) {
                                   debugPrint("Call initiation Success");
 
                                   final state = cubit.state as CallCreatedState;
-                                  cubit.sendCallToStudent(context, studentId, studentName, teacherName, teacherId, teacherImage, state.call, state.callState);
+                                  cubit.sendCallToStudent(context, studentId, studentName, teacherName, teacherId,
+                                      teacherImage, state.call, state.callState);
+                                  final result = Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CallScreen(call: state.call),
+                                    ),
+                                  );
+
+                                  // Refresh the screen when the call ends
+                                  if (result == true) {
+                                    context.read<FetchUsersCubit>().fetchStudents();
+                                  }
                                 } else {
                                   debugPrint("Call initiation failed with state: ${cubit.state}");
                                 }
@@ -181,27 +214,13 @@ class _TeacherScreenState extends State<TeacherScreen> {
                 }
               },
             ),
-            floatingActionButton: BlocBuilder<MeetingsCubit, MeetingState>(
-              builder: (context, state) {
-                return FloatingActionButton(
-                  child: const Icon(Icons.add),
-                  onPressed: () async {
-                    print(">>>>>>>>>>>>>>>>>>>>ID: ${teacherId.toString()}");
-                    print(">>>>>>>>>>>>>>>>>>>>ID: ${FirebaseServices().auth.currentUser?.uid ?? "Emprty"}");
-                    if (state is MeetingCreatedState) {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => ReadyToStartScreen(
-                                  onJoinCallPressed: (_) =>
-                                      context.read<MeetingsCubit>().joinMeet(context, state.meet.id),
-                                  call: state.meet)));
-                    } else if (state is MeetingErrorState) {
-                      print("Failed Create call, ${state.message}");
-                    }
-                  },
-                );
-              },
+            floatingActionButton: FloatingActionButton.small(
+              onPressed: () async => await FirebaseServices().logout().then((value) => locator
+                  .get<UserAuthController>()
+                  .logout()
+                  .then((value) =>
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen())))),
+              child: const Icon(Icons.logout, color: Colors.redAccent),
             ),
           );
         },

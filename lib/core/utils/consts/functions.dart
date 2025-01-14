@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,11 @@ String generateRandomNumber(int length) {
 String sessionId = const Uuid().v4();
 
 /// generate callID from random letters and numbers
+/// 1- length = 4 ----> CallId
+/// 2- length = 5 ----> LiveStreamId
+/// 3- length = 6 ----> AudioRoomId
+/// 4- length = 8 ----> MeetId
+
 const _chars = 'abcdefghijklmnopqrstuvwxyz1234567890';
 Random _rnd = Random();
 

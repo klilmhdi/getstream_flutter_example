@@ -12,8 +12,8 @@ import 'package:stream_video_flutter/stream_video_flutter.dart' hide ConnectionS
 import '../../features/data/repo/app_preferences.dart';
 import '../../features/data/services/token_service.dart';
 import '../../features/presentation/manage/call/call_cubit.dart';
-import '../../features/presentation/view/meet/call_screen.dart';
-import '../../features/presentation/view/meet/incoming_call.dart';
+import '../../features/presentation/view/getstream_service/calling/call_screen.dart';
+import '../../features/presentation/view/getstream_service/calling/incoming_call.dart';
 import '../../firebase_options.dart';
 import '../di/injector.dart';
 import '../utils/bloc_observer.dart';
@@ -57,7 +57,22 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class AppConsumers {
+  // public variables
   final compositeSubscription = CompositeSubscription();
+
+  final Map<String, dynamic> serviceAccountJson = {
+    "type": "service_account",
+    "project_id": "getstream-flutter-example",
+    "private_key_id": "7e9314f3d4876db7ea092629ecd5ef0546d691ec",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC6QcGXY3tfSqbf\nCNTpFKkIlRer/uQyceZFv0z8C0i0h0UHd0ykCNfdufTF2TfVzZlrAyy+RiZI591w\nh9odh4kYGz0Kg++BRdR6XYtr68nYrC+hGt/sBnRo6J8i+P/j3Pf5/JenPDu+AwVL\nvnqKeY8zPLhW1DfqGMLOL0F2tyWEjkY1H/xujfT+iyzP7Ks3NJIuskkiZspWvcmm\nmOPQ2r9JbMAiMF7/k2r/T3kpTG4EkqpMIkTCUtALviMWCWRHyednCTO5u1fkP7oq\nwvWuKJT2rI0qGQtFVu8QAoPGc6RPsMH2ILLcNqc0+WfBee7EmIQuSkIEXNVyUrUp\nJBGCDBY/AgMBAAECggEAB6C3b/s+nSdiAgKnht2vBH2SnlQ47+XvduNxkmWQkr5W\nVW5UfT1GXQLAThjb3OouyY3COyuFSflmRLU+QK3k6F3+ic2mpvfUo/0lhoP9zkDh\nMc6T5WOS8zfRZtFQEQjxPxrR8nhRhrH5+WExrzX/ICtxJsEtZiZMAPZyI/EaFaEU\nuOZupifUJMeE2MpkWuuP3YqRQaDgd8Lg5dKQ04GASyYXAZLVFdyR5HS9UCkE7AYx\nH3hoRZSk6PiJFPvGK9CRKw0x1EhhIBR0SfPwF9MvhoDwszBqTsrsOuQUYITPwAr7\nFDvXbTNvWPW1y0xHdjptiynMceFbcyyTNLOMvrJ22QKBgQDsPjSqCr14Ox0GgIN/\n99qB9LC7ZfxpW6fAKls+XWLff6TjROMHiIx5VBL8sxaXLljSdQNI0dHr+hmqBeXW\novhbWUkGfPmxvdil5vkfKnvoUpjjv4MPNGz0FolHPnJC48Dl3Y4d8n4SwFE6tcIW\njMrnzauYHY38gh6gc3NElw0I+QKBgQDJ1WINRZ9xbIAkw+GZ71xXWbt3mWs5CMx0\ns7bXaJL3RQk2DV/IbSqxftrr+8WOX8hNpeq77b7TlVai2r0ag7rlPurUQjiT9QY3\nIWcc+gGjDYkVh7VzTNxcGgx9xhYdyzTzz0uEdJ2f4++M63jXWSZSbS10xHEQ5eZZ\nyEa9pNVe9wKBgQDCnZg7ALAHbQNDSPmLoT5T0qUJLEIc9VGjYAFcxgfewMOwKh6x\nJQ88IEOoA0y37IlljtnO0nMR6C3eQA+Qmx7n+gzLmIcGorPoL/fIcfIzeF/VNv6b\ntv+OsUYT9+CfNArEEpmyGAM+JUqFiBhFBWVeQrN6k9ZVT0g1vAYYWit12QKBgB2W\n8vEPK/js9zxsmz5+IQONXDaEf3u1FoRldIDQC/vEWz1ZaJlxp7it6FqAZs4grLT1\nhhxXForecf0eJGsmtNe3CaZkrvbCDU83zm4pGORWr6pAYxGsSwIVr48g400q5XB5\nC5E3p4QxXoVCYEzx/PRInUlpI0pe6g5vli9nYwCxAoGBALTAyJ+QxgafdamebkHw\noUZo7dpX5oOyR8VvAoXnJXOk3dqeSu8+0fYFLrt0bkZcxTkkbE5/MfmhcF81rVAf\n/6ZWjGIDbMUV0fq6pCJuw6f9nw7LxkOa0zo0lRp53OdhZ+26HrcTCXXylvNjEOsb\nYFEFcjoG/wn3bpsXPleF3lo5\n-----END PRIVATE KEY-----\n",
+    "client_email": "firebase-adminsdk-qhdst@getstream-flutter-example.iam.gserviceaccount.com",
+    "client_id": "112290239843924678140",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-qhdst%40getstream-flutter-example.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+  };
 
   // initialize app services when the app begin
   Future<void> initializeServices(BuildContext context) async {
@@ -169,7 +184,7 @@ class AppConsumers {
             connectOptions: null,
           );
 
-          Navigator.push(context, MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
+          Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (context) => CallScreen(call: extra.call)));
         },
       ),
     );

@@ -2,134 +2,31 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
-//
-// class CallDurationTitle extends StatefulWidget {
-//   const CallDurationTitle({
-//     super.key,
-//     required this.call,
-//   });
-//
-//   final Call call;
-//
-//   @override
-//   State<CallDurationTitle> createState() => _CallDurationTitleState();
-// }
-//
-// class _CallDurationTitleState extends State<CallDurationTitle> with WidgetsBindingObserver {
-//   DateTime? _startedAt;
-//   Duration _duration = Duration.zero;
-//   Timer? _timer;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     WidgetsBinding.instance.addObserver(this);
-//
-//     // Get call start time from CallState
-//     _initializeTimer();
-//
-//     // Start the timer to update duration
-//     // _startTimer();
-//   }
-//
-//   Future<String?> getTimer() async {
-//     final SharedPreferences prefs = await SharedPreferences.getInstance();
-//     return prefs.getString('call_start_time');
-//   }
-//
-//   Future<bool> setTimer(now) async {
-//     final SharedPreferences prefs = await SharedPreferences.getInstance();
-//     return prefs.setString('call_start_time', now.toIso8601String());
-//   }
-//
-//   Future<bool> deleteTimer() async {
-//     final SharedPreferences prefs = await SharedPreferences.getInstance();
-//     return prefs.remove('call_start_time').then((value) {
-//       return prefs.clear();
-//     });
-//   }
-//
-//   Future<void> _initializeTimer() async {
-//     // Check if a start time is already saved
-//     final savedStartTime = getTimer();
-//     if (savedStartTime != null) {
-//       setState(() {
-//         _startedAt = DateTime.parse(savedStartTime.toString());
-//       });
-//     } else {
-//       // If no start time exists, use the current time and save it
-//       final now = DateTime.now();
-//       setState(() {
-//         _startedAt = now;
-//       });
-//       setTimer(now);
-//     }
-//
-//     // Start the timer
-//     _startTimer();
-//   }
-//
-//   void _startTimer() {
-//     _timer?.cancel();
-//
-//     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-//       if (!mounted) {
-//         timer.cancel();
-//         return;
-//       }
-//
-//       setState(() {
-//         _duration = DateTime.now().difference(_startedAt ?? DateTime.now());
-//       });
-//     });
-//   }
-//
-//   @override
-//   void didChangeAppLifecycleState(AppLifecycleState state) {
-//     super.didChangeAppLifecycleState(state);
-//
-//     if (state == AppLifecycleState.resumed) {
-//       // Ensure the duration continues correctly on resume
-//       _startTimer();
-//     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-//       _timer?.cancel();
-//     }
-//   }
-//
-//   @override
-//   void dispose() {
-//     WidgetsBinding.instance.removeObserver(this);
-//     _timer?.cancel();
-//     super.dispose();
-//     deleteTimer();
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       decoration: BoxDecoration(
-//         color: Theme.of(context).cardColor,
-//         borderRadius: BorderRadius.circular(20)),
-//       padding: const EdgeInsets.all(8),
-//       child: Row(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           Icon(Icons.timer, color: Theme.of(context).primaryColor, size: 20),
-//           const SizedBox(width: 4),
-//           Text(
-//             '${_duration.inMinutes.toString().padLeft(2, '0')}:${_duration.inSeconds.remainder(60).toString().padLeft(2, '0')}',
-//             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-//                   fontWeight: FontWeight.bold,
-//                   color: Colors.black87,
-//                 ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
 
-/// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+/// waiting to join meeting duration
+Widget waitingJoinMeetWidget(BuildContext context) => Container(
+  decoration: BoxDecoration(
+    color: Theme.of(context).cardColor,
+    borderRadius: BorderRadius.circular(20),
+  ),
+  padding: const EdgeInsets.all(12),
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.access_time, color: Theme.of(context).primaryColor, size: 20),
+      const SizedBox(width: 4),
+      Text(
+        'Waiting for participant...',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+    ],
+  ),
+);
+
+/// call timer
 class CallDurationTitle extends StatefulWidget {
   const CallDurationTitle({super.key, required this.call});
 
@@ -200,35 +97,7 @@ class _CallDurationTitleState extends State<CallDurationTitle> {
   }
 }
 
-class WaitingJoinMeetWidget extends StatelessWidget {
-  const WaitingJoinMeetWidget({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.access_time, color: Theme.of(context).primaryColor, size: 20),
-          const SizedBox(width: 4),
-          Text(
-            'Waiting for participant...',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
+/// meet timer
 class MeetDurationTitle extends StatefulWidget {
   const MeetDurationTitle({super.key, required this.call});
 
@@ -291,6 +160,70 @@ class _MeetDurationTitleState extends State<MeetDurationTitle> {
               style: videoTheme.textTheme.title3Bold.apply(color: Colors.white)),
         ],
       ),
+    );
+  }
+}
+
+/// livestream timer
+class LivestreamTimer extends StatefulWidget {
+  final DateTime? startedAt;
+
+  const LivestreamTimer({super.key, required this.startedAt});
+
+  @override
+  _LivestreamTimerState createState() => _LivestreamTimerState();
+}
+
+class _LivestreamTimerState extends State<LivestreamTimer> {
+  late Timer _durationTimer;
+  final ValueNotifier<Duration> _duration = ValueNotifier<Duration>(Duration.zero);
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    final now = DateTime.now();
+    final startedAt = widget.startedAt ?? now;
+    _duration.value = now.difference(startedAt);
+
+    _durationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _duration.value = _duration.value + const Duration(seconds: 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _durationTimer.cancel();
+    _duration.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Duration>(
+      valueListenable: _duration,
+      builder: (context, duration, _) {
+        final minutes = duration.inMinutes;
+        final seconds = duration.inSeconds % 60;
+        final formattedDuration = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+
+        return Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Colors.red,
+              radius: 4,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              formattedDuration,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white),
+            ),
+          ],
+        );
+      },
     );
   }
 }

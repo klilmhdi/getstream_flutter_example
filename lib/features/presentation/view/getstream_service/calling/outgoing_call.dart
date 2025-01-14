@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/call_screen.dart';
+import 'package:getstream_flutter_example/features/presentation/view/getstream_service/calling/call_screen.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
 class CustomOutgoingCallScreen extends StatefulWidget {
@@ -47,15 +47,7 @@ class _CustomOutgoingCallScreenState extends State<CustomOutgoingCallScreen> {
           ],
         ),
         onAcceptCallTap: () => context.read<CallingsCubit>().acceptCall(context, widget.call.id, widget.call),
-        onCancelCallTap: () => widget.call.reject(reason: CallRejectReason.cancel()).then((_) {
-          showSuccessSnackBar("Call is canceled!", 3, context);
-        }),
-        onDeclineCallTap: () => widget.call.reject(reason: CallRejectReason.decline()).then((_) {
-          showSuccessSnackBar("Call is declined!", 3, context);
-        }),
-        onLeaveCallTap: () => widget.call.leave(reason: DisconnectReasonEnded()).then((_) {
-          showSuccessSnackBar("Call is leaved!", 3, context);
-        }),
+        onDeclineCallTap: () => context.read<CallingsCubit>().rejectCallFromTeacher(context, widget.call.id, widget.call),
       ),
     );
   }

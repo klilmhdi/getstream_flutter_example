@@ -7,8 +7,8 @@ import 'package:getstream_flutter_example/features/data/services/firebase_servic
 import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart';
 
-import '../../manage/fetch_users/fetch_users_cubit.dart';
-import '../../widgets/stream_button.dart';
+import '../../../manage/fetch_users/fetch_users_cubit.dart';
+import '../../../widgets/stream_button.dart';
 
 class ReadyToStartScreen extends StatefulWidget {
   const ReadyToStartScreen({super.key, required this.onJoinCallPressed, required this.call});
@@ -56,7 +56,6 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
     // widget.call.reject();
     // widget.call.leave();
 
-    // Stop the tracks (ensuring they are stopped before checking the state)
     await _cameraTrack?.stop();
     await _microphoneTrack?.stop();
 
@@ -64,7 +63,7 @@ class _ReadyToStartScreenState extends State<ReadyToStartScreen> {
     if (isTeacher) {
       try {
         if (!mounted) return;
-        await context.read<MeetingsCubit>().endMeetFromTeacher(context, widget.call.id, widget.call);
+        await context.read<MeetingsCubit>().rejectMeetFromTeacher(context, widget.call.id, widget.call);
         print("Call successfully ended in Firestore");
         // showSuccessSnackBar("Success: isActive set to false", 4, context);
       } catch (error) {

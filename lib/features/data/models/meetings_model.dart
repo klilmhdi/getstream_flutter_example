@@ -5,6 +5,9 @@ class MeetingModel {
   final String receiverID;
   final String receiverName;
   final bool isActiveMeet;
+  final DateTime startMeetAt;
+  final DateTime? endMeetAt;
+  final Duration meetDuration;
 
   MeetingModel({
     required this.meetID,
@@ -13,26 +16,11 @@ class MeetingModel {
     required this.receiverID,
     required this.receiverName,
     required this.isActiveMeet,
+    required this.startMeetAt,
+    this.endMeetAt,
+    this.meetDuration = Duration.zero,
   });
 
-  MeetingModel copyWith({
-    String? meetID,
-    String? creatorID,
-    String? creatorName,
-    String? receiverID,
-    String? receiverName,
-    bool? isActiveMeet,
-  }) => MeetingModel(
-      meetID: meetID ?? this.meetID,
-      creatorID: creatorID ?? this.creatorID,
-      creatorName: creatorName ?? this.creatorName,
-      receiverID: receiverID ?? this.receiverID,
-      receiverName: receiverName ?? this.receiverName,
-      isActiveMeet: isActiveMeet ?? this.isActiveMeet,
-    );
-
-
-  // Convert a MeetingModel object to a map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'meetID': meetID,
@@ -41,10 +29,12 @@ class MeetingModel {
       'receiverID': receiverID,
       'receiverName': receiverName,
       'isActiveMeet': isActiveMeet,
+      'startMeetAt': startMeetAt.toIso8601String(),
+      'endMeetAt': endMeetAt?.toIso8601String(),
+      'meetDuration': meetDuration.inSeconds,
     };
   }
 
-  // Create a MeetingModel object from Firestore data
   factory MeetingModel.fromMap(Map<String, dynamic> map) {
     return MeetingModel(
       meetID: map['meetID'],
@@ -53,6 +43,32 @@ class MeetingModel {
       receiverID: map['receiverID'],
       receiverName: map['receiverName'],
       isActiveMeet: map['isActiveMeet'],
+      startMeetAt: DateTime.parse(map['startMeetAt']),
+      endMeetAt: map['endMeetAt'] != null ? DateTime.parse(map['endMeetAt']) : null,
+      meetDuration: Duration(seconds: map['meetDuration'] ?? 0),
     );
   }
+
+  MeetingModel copyWith({
+    String? meetID,
+    String? creatorID,
+    String? creatorName,
+    String? receiverID,
+    String? receiverName,
+    bool? isActiveMeet,
+    DateTime? startMeetAt,
+    DateTime? endMeetAt,
+    Duration? meetDuration,
+  }) =>
+      MeetingModel(
+        meetID: meetID ?? this.meetID,
+        creatorID: creatorID ?? this.creatorID,
+        creatorName: creatorName ?? this.creatorName,
+        receiverID: receiverID ?? this.receiverID,
+        receiverName: receiverName ?? this.receiverName,
+        isActiveMeet: isActiveMeet ?? this.isActiveMeet,
+        meetDuration: meetDuration ?? this.meetDuration,
+        startMeetAt: startMeetAt ?? this.startMeetAt,
+        endMeetAt: endMeetAt ?? this.endMeetAt,
+      );
 }

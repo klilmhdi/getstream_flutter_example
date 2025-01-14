@@ -4,16 +4,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
+import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
+import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/data/models/calling_model.dart';
 import 'package:getstream_flutter_example/features/data/services/firebase_services.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/call_canceled_screen.dart';
-import 'package:getstream_flutter_example/features/presentation/view/meet/call_screen.dart';
+import 'package:getstream_flutter_example/features/presentation/view/getstream_service/calling/outgoing_call.dart';
+import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide Event;
 import 'package:stream_video_flutter/stream_video_flutter.dart';
-
-import '../../view/meet/incoming_call.dart';
 
 part 'call_state.dart';
 
@@ -24,35 +25,45 @@ class CallingsCubit extends Cubit<CallingsState> {
 
   final callType = StreamCallType.defaultType();
   final streamVideo = locator.get<StreamVideo>();
+  final FirebaseServices firebaseServices = FirebaseServices();
   Call? call;
+  // RtcLocalAudioTrack? _microphoneTrack;
+  // RtcLocalCameraTrack? _cameraTrack;
+  // Timer? _durationTimer;
 
   /// Basic function to (create / make) a  call in general
-  Call _makeCall(callId) {
-    return call = locator.get<StreamVideo>().makeCall(callType: callType, id: callId);
-    // return call;
-  }
+  Call _makeCall(String callId) => call = locator.get<StreamVideo>().makeCall(callType: callType, id: callId);
 
   // Initial call from teacher
-  Future<void> initiateCall(BuildContext context, teacherId, teacherName, teacherImage,
-      {studentId, studentName}) async {
-    emit(CallLoadingState());
+  Future<void> initiateCall(
+    BuildContext context,
+    String teacherId,
+    String teacherName,
+    String teacherImage, {
+    required String studentId,
+    required String studentName,
+  }) async {
+    if (!isClosed) emit(CallLoadingState());
     if (teacherId.isEmpty || studentId.isEmpty) {
       debugPrint('Teacher or student ID is missing.');
-      emit(const CallErrorState('Invalid member IDs.'));
+      if (!isClosed) emit(const CallErrorState('Invalid member IDs.'));
       return;
     }
+
     try {
-      final call = _makeCall(generateCallId(4));
+      final newCallId = generateCallId(4);
+      final call = _makeCall(newCallId);
       checkAndRequestPermissions(context).then((value) async {
-        await call.getOrCreate(
+        await call
+            .getOrCreate(
           ringing: true,
           video: true,
-
           memberIds: [teacherId, studentId],
-          // limits: const StreamLimitsSettings(
-          //   maxDurationSeconds: 3600,
-          // ),
-        ).then((value) async {
+          limits: const StreamLimitsSettings(maxParticipants: 2, maxDurationSeconds: 3600),
+          custom: {'senderName': teacherName, 'receiverName': studentName},
+          // backstage: const StreamBackstageSettings(enabled: true)
+        )
+            .then((value) async {
           print("?>>>>>>>>>>>>>>>>>>>>>>>>>Student name: $studentName");
           print("?>>>>>>>>>>>>>>>>>>>>>>>>>Student name: $studentId");
           debugPrint("Call state after creation: ${call.state.value.status}");
@@ -61,21 +72,25 @@ class CallingsCubit extends Cubit<CallingsState> {
           if (value.isSuccess) {
             debugPrint(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call successfully connected!");
             final calling = CallingModel(
-                callID: call.id,
-                callerID: teacherId,
-                callerName: teacherName,
-                callingID: studentId,
-                callingName: studentName,
-                isAccepted: false,
-                isActiveCall: true,
-                isRinging: true);
+              callID: call.id,
+              callerID: teacherId,
+              callerName: teacherName,
+              callingID: studentId,
+              callingName: studentName,
+              isAccepted: false,
+              isActiveCall: true,
+              isRinging: true,
+              startAt: DateTime.now(),
+            );
             print(
                 ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Callings: ${calling.toMap()}");
-            FirebaseServices().firestore.collection("calls").doc(call.id).set(calling.toMap());
-            emit(CallCreatedState(
-                call: call,
-                callState: CallState(
-                    currentUserId: studentId, callCid: StreamCallCid.from(type: callType, id: call.id.toString()))));
+            firebaseServices.firestore.collection("calls").doc(call.id).set(calling.toMap());
+            if (!isClosed) {
+              emit(CallCreatedState(
+                  call: call,
+                  callState: CallState(
+                      currentUserId: studentId, callCid: StreamCallCid.from(type: callType, id: call.id.toString()))));
+            }
             sendCallToStudent(
               context,
               studentId,
@@ -87,40 +102,48 @@ class CallingsCubit extends Cubit<CallingsState> {
               CallState(currentUserId: studentId, callCid: StreamCallCid.from(id: call.id, type: callType)),
             );
           } else if (call.state.value.status.isIdle) {
-            debugPrint(
-                ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Status: ${call.state.value.status}");
-            emit(const CallErrorState("Call is IDLE"));
-          } else {
-            debugPrint(
-                ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>else Call failed: ${call.state.value.status}");
-            emit(const CallErrorState("Call is failed"));
+            if (!isClosed) {
+              debugPrint(
+                  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Status: ${call.state.value.status}");
+              emit(const CallErrorState("Call is IDLE"));
+            } else {
+              debugPrint(
+                  ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>else Call failed: ${call.state.value.status}");
+              emit(const CallErrorState("Call is failed"));
+            }
           }
         }).catchError((onError, stackTrace) {
-          debugPrint(
-              '*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch error Error joining or creating call: $onError');
-          debugPrint(
-              '*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch error Error joining or creating call: $stackTrace');
-          emit(const CallErrorState("Catch Error"));
+          if (!isClosed) {
+            debugPrint(
+                '*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch error Error joining or creating call: $onError');
+            debugPrint(
+                '*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch error Error joining or creating call: $stackTrace');
+            emit(const CallErrorState("Catch Error"));
+          }
         }).onError((e, stk) {
-          debugPrint(
-              '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on error Error joining or creating call: $e');
-          debugPrint(
-              ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on error Error joining or creating call: ${stk.toString()}");
-          emit(const CallErrorState("On Error"));
+          if (!isClosed) {
+            debugPrint(
+                '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on error Error joining or creating call: $e');
+            debugPrint(
+                ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on error Error joining or creating call: ${stk.toString()}");
+            emit(const CallErrorState("On Error"));
+          }
         });
       });
     } catch (e, s) {
-      debugPrint(
-          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch Call initiation error: ${e.toString()}");
-      debugPrint(
-          ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch Stack trace: ${s.toString()}");
-      emit(CallErrorState("Failed to initiate call: ${s.toString()}"));
+      if (!isClosed) {
+        debugPrint(
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch Call initiation error: ${e.toString()}");
+        debugPrint(
+            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>on catch Stack trace: ${s.toString()}");
+        emit(CallErrorState("Failed to initiate call: ${s.toString()}"));
+      }
     }
   }
 
   // Send a call with ringtone from teacher to student
   Future<void> sendCallToStudent(
-    context,
+    BuildContext context,
     String studentId,
     String studentName,
     String teacherName,
@@ -129,264 +152,260 @@ class CallingsCubit extends Cubit<CallingsState> {
     Call call,
     CallState callState,
   ) async {
-    emit(LoadCallToStudentState());
+    if (!isClosed) emit(LoadCallToStudentState());
 
     try {
       const OutgoingState.sending();
       final studentDoc = await FirebaseFirestore.instance.collection('users').doc(studentId).get();
 
-      
       if (!studentDoc.exists) {
         print("Student does not exist in the database.");
         return;
       }
 
+      print("?>>>>>>>>>>>>>>>?>>>>>>> teacher name: $teacherName");
+      print("?>>>>>>>>>>>>>>>?>>>>>>> teacher id: $teacherId");
+      print("?>>>>>>>>>>>>>>>?>>>>>>> teacher image: $teacherImage");
+      print("?>>>>>>>>>>>>>>>?>>>>>>> student name: $studentName");
+      print("?>>>>>>>>>>>>>>>?>>>>>>> student image: $teacherImage");
+
       await streamVideo.state.setOutgoingCall(call);
-      emit(SuccessSendCallToStudentState(
-        call: call,
-        callState: callState,
-      ));
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CustomOutgoingCallScreen(
+              call: call,
+              callState: callState,
+            ),
+          ),
+        );
+      });
+
+      if (!isClosed) {
+        emit(SuccessSendCallToStudentState(
+          call: call,
+          callState: callState,
+        ));
+      }
       listenForIncomingCalls(context, studentId,
           teacherName: teacherName, teacherId: teacherId, teacherImage: teacherImage);
 
       print("Incoming call notification sent successfully.");
     } catch (e) {
-      print("Error creating call: $e");
-      emit(FailedSendCallToStudentState(error: '$e'));
+      if (!isClosed) {
+        print("Error creating call: $e");
+        emit(FailedSendCallToStudentState(error: '$e'));
+      }
     }
   }
 
-  // Listen to call coming from teacher
-  // void listenForIncomingCalls(BuildContext context, String studentId, {String? teacherName, String? teacherId}) {
-  //   emit(LoadingIncomingCallState());
-  //   streamVideo.state.incomingCall.listen((incomingCall) async {
-  //     await streamVideo.getCallRingingState(callType: callType, id: incomingCall!.callCid.id).then((value) {
-  //       switch (value) {
-  //         case CallRingingState.ringing:
-  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call state is ringing");
-  //           // streamVideo.pushNotificationManager!.showIncomingCall(uuid: studentId, callCid: incomingCall.callCid.id);
-  //           streamVideo.consumeIncomingCall(uuid: studentId, cid: incomingCall.callCid.id);
-  //           streamVideo.handleVoipPushNotification({
-  //             'created_by_display_name': teacherName,
-  //             'call_cid': incomingCall.id,
-  //             'video': false,
-  //           }, handleMissedCall: true);
-  //           // streamVideo.onCallKitEvent((_) =>
-  //           //     Navigator.push(
-  //           //       context,
-  //           //       MaterialPageRoute(
-  //           //         builder: (context) => CustomIncomingCallScreen(
-  //           //           call: incomingCall,
-  //           //         ),
-  //           //       ),
-  //           //     ));
-  //           Navigator.push(
-  //             context,
-  //             MaterialPageRoute(
-  //               builder: (context) => CustomIncomingCallScreen(
-  //                 call: incomingCall,
-  //               ),
-  //             ),
-  //           );
-  //           emit(IncomingCallState(call: incomingCall, teacherName: teacherName!, teacherId: teacherId!));
-  //           break;
-  //
-  //         case CallRingingState.ended:
-  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call state is ended");
-  //           endCall(context, incomingCall.id, incomingCall);
-  //           emit(CallEndedState());
-  //           break;
-  //         case CallRingingState.rejected:
-  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call state is rejected");
-  //           rejectCallFromStudent(context, incomingCall.id, incomingCall);
-  //           emit(CallRejectedFromStudentState(callId: incomingCall.id));
-  //           break;
-  //         case CallRingingState.accepted:
-  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call state is accepted");
-  //           acceptCall(context, incomingCall.id, incomingCall);
-  //           emit(CallAcceptedState(callId: incomingCall.id));
-  //           break;
-  //         default:
-  //           emit(LoadingIncomingCallState());
-  //       }
-  //     });
-  //     // streamVideo.consumeIncomingCall(uuid: studentId, cid: incomingCall!.callCid.id);
-  //     //   await streamVideo.pushNotificationManager!.showIncomingCall(uuid: studentId, callCid: incomingCall.callCid.id);
-  //     //   // await streamVideo.consumeIncomingCall(uuid: studentId, cid: incomingCall.callCid.id);
-  //     //   await streamVideo.handleVoipPushNotification({
-  //     //     'created_by_display_name': teacherName,
-  //     //     'call_cid': incomingCall.id,
-  //     //     'video': false,
-  //     //   }, handleMissedCall: true);
-  //   });
-  // }
+  // listen to incoming calls from teacher
+  void listenForIncomingCalls(
+    BuildContext context,
+    String studentId, {
+    required String teacherName,
+    required String teacherId,
+    required String teacherImage,
+  }) async {
+    print("?>>>>>>>>>>>>>>>?>>>>>>> Incoming call");
 
-  /// in 96% this is successful function
-  void listenForIncomingCalls(BuildContext context, String studentId,
-      {String? teacherName, String? teacherId, String? teacherImage}) {
+    print("?>>>>>>>>>>>>>>>?>>>>>>>?>>>>>>> teacher name: $teacherName");
+    print("?>>>>>>>>>>>>>>>?>>>>>>>?>>>>>>> teacher name: $teacherId");
+    print("?>>>>>>>>>>>>>>>?>>>>>>>?>>>>>>> teacher name: $teacherImage");
     streamVideo.state.incomingCall.listen((incomingCall) async {
       if (incomingCall != null) {
         await streamVideo.getCallRingingState(callType: callType, id: incomingCall.callCid.id).then((value) {
+          debugPrint("+++++++++++++++++++++++++++++++++++++++++++++++++ CallRingingState: $value +++++++++++++++++++++++++++++++++++++++++++++++++ "); // Add this line for debugging
+
           if (value == CallRingingState.ringing) {
             streamVideo.pushNotificationManager!
                 .showIncomingCall(uuid: studentId, callCid: incomingCall.callCid.toString());
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CustomIncomingCallScreen(
-                    call: incomingCall,
-                    senderName: teacherName,
-                    senderImageUrl: teacherImage,
-                    // callState: CallState(
-                    //   currentUserId: studentId,
-                    //   callCid: StreamCallCid(cid: incomingCall.callCid.id),
-                    // ),
-                  ),
-                ),
-              );
-            });
-            emit(IncomingCallState(call: incomingCall, teacherId: teacherId!, teacherName: teacherName!));
+            // WidgetsBinding.instance.addPostFrameCallback((_) async {
+            // Future.delayed(const Duration(milliseconds: 300), () {
+            //   Navigator.pushAndRemoveUntil(
+            //       context,
+            //       MaterialPageRoute(
+            //           builder: (context) => CustomIncomingCallScreen(
+            //                 incomingCall,
+            //                 senderId: teacherId,
+            //                 senderName: teacherName,
+            //               )),
+            //       (route) => false);
+            // });
+            AppConsumers().consumeIncomingCall(context);
+            if (!isClosed) {
+              emit(IncomingCallState(
+                call: incomingCall,
+                teacherId: teacherId,
+                teacherName: teacherName,
+                teacherImage: teacherImage,
+              ));
+            }
           } else if (value == CallRingingState.ended) {
-            endCall(context, incomingCall.id, incomingCall);
-            emit(CallEndedState());
-          } else if (value == CallRingingState.accepted) {
-            acceptCall(context, incomingCall.id, incomingCall);
-            emit(CallAcceptedState(callId: incomingCall.id));
-          } else if (value == CallRingingState.rejected) {
-            rejectCallFromStudent(context, incomingCall.id, incomingCall);
-            emit(CallRejectedFromStudentState(callId: incomingCall.id));
+            showSuccessSnackBar("Call ended from student", 3, context);
+            endCall(
+              incomingCall,
+              locator.get<UserAuthController>().currentUser?.id ?? "Empty ID",
+              locator.get<UserAuthController>().currentUser?.name ?? "Empty Name",
+              context,
+              locator.get<UserAuthController>(),
+            );
+            if (!isClosed) emit(SuccessCallEndedState());
           }
         });
       } else {
-        emit(const CallErrorState("state is null"));
+        if (!isClosed) emit(const CallErrorState("state is null"));
       }
     });
   }
 
-  // Accept the call coming from teacher
-  Future<void> acceptCall(context, String callId, Call call) async {
+  // Accept the incoming call from teacher
+  Future<void> acceptCall(BuildContext context, String callId, Call call) async {
     try {
       await call.accept().then((value) async {
         print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Accepted");
+        AppConsumers().observeCallKitEvents(context);
         await FirebaseFirestore.instance.collection('calls').doc(callId).update({
           'isRinging': false,
           'isAccepted': true,
         });
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CallScreen(call: call),
-            ));
-        emit(CallAcceptedState(callId: callId));
+        if (!isClosed) emit(CallAcceptedState(callId: callId));
       });
     } catch (e, s) {
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
-      emit(CallErrorState("Failed to accept call: $e"));
-    }
-  }
-
-  // Reject or cancel the call coming from teacher
-  Future<void> rejectCallFromTeacher(context, String callId, Call call) async {
-    try {
-      await call.end();
-      await call.reject(reason: CallRejectReason.cancel()).then((value) async {
-        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Rejected");
-        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
-          'isRinging': false,
-        });
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CallCancelledScreen()),
-        );
-        emit(CallRejectedFromTeacherState(callId: callId));
-      });
-    } catch (e, s) {
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
-      emit(CallErrorState("Failed to reject call: $e"));
-    }
-  }
-
-  // Reject or cancel the call coming from student
-  Future<void> rejectCallFromStudent(context, String callId, Call call) async {
-    try {
-      await call.end();
-      await call.reject(reason: CallRejectReason.cancel()).then((value) async {
-        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Rejected");
-        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
-          'isRinging': false,
-        });
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CallCancelledScreen()),
-        );
-        emit(CallRejectedFromStudentState(callId: callId));
-      });
-    } catch (e, s) {
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
-      print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
-      emit(CallErrorState("Failed to reject call: $e"));
-    }
-  }
-
-  // End call via set isActive to false
-  Future<void> endCall(BuildContext context, String callId, Call call) async {
-    try {
-      // Query the call document by its 'callId' field
-      final querySnapshot =
-          await FirebaseServices().firestore.collection("calls").where("callId", isEqualTo: callId).limit(1).get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final documentId = querySnapshot.docs.first.id;
-
-        // Update the document: set 'isActive' to false and remove 'callId' field
-        await FirebaseServices().firestore.collection("calls").doc(documentId).update({
-          'isActive': false,
-          'callId': FieldValue.delete(),
-        });
-        await call.end();
-        await call.reject(reason: CallRejectReason.cancel());
-        await call.leave(reason: DisconnectReason.ended());
-        await streamVideo.pushNotificationManager?.endCall(callId);
-        await streamVideo.pushNotificationManager?.endAllCalls();
-
-        Navigator.pop(context);
-        emit(CallEndedState());
-      } else {
-        emit(const CallErrorState("Call not found."));
+      if (!isClosed) {
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
+        emit(CallErrorState("Failed to accept call: $e"));
       }
-    } catch (e) {
-      emit(CallErrorState("Failed to end call: $e"));
     }
   }
 
-// void callKitEvents() async {
-//   FlutterCallkitIncoming.onEvent.listen((event) async {
-//     debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Listen to event: ${event!.event.name.toString()}");
-//     switch (event!.event) {
-//       case Event.actionCallIncoming:
-//         debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Incoming");
-//
-//         break;
-//
-//       case Event.actionCallDecline:
-//         debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call declined");
-//         break;
-//
-//       case Event.actionCallTimeout:
-//         debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Missed call");
-//         break;
-//
-//       case Event.actionCallAccept:
-//         debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Accept");
-//         break;
-//       default:
-//         debugPrint("*********>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Did not listen");
-//
-//         break;
-//     }
-//   });
-// }
+  // Reject or cancel the incoming call from teacher
+  Future<void> rejectCallFromTeacher(BuildContext context, String callId, Call call) async {
+    try {
+      await call.reject(reason: CallRejectReason.decline()).then((value) async {
+        await call.end();
+        streamVideo.observeCallDeclinedCallKitEvent();
+        AppConsumers().compositeSubscription.cancel();
+        streamVideo.pushNotificationManager!.endAllCalls();
+        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Rejected from teacher");
+        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
+          'isRinging': false,
+          'isAccepted': false,
+          'isActiveCall': false,
+        });
+        showSuccessSnackBar("The call canceled form Teacher", 3, context);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const Layout(type: "Teacher")), (route) => false);
+        });
+        if (!isClosed) emit(CallRejectedFromTeacherState(callId: callId));
+      });
+    } catch (e, s) {
+      if (!isClosed) {
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
+        emit(CallErrorState("Failed to reject call: $e"));
+      }
+    }
+  }
+
+  // Reject or cancel the incoming call from student
+  Future<void> rejectCallFromStudent(BuildContext context, String callId, Call call) async {
+    try {
+      await call.reject(reason: CallRejectReason.decline()).then((value) async {
+        AppConsumers().compositeSubscription.cancel();
+        streamVideo.observeCallDeclinedCallKitEvent();
+        streamVideo.pushNotificationManager!.endAllCalls();
+        streamVideo.pushNotificationManager!.dispose();
+        print("?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Call Rejected from student");
+        await FirebaseFirestore.instance.collection('calls').doc(callId).update({
+          'isRinging': false,
+          'isAccepted': false,
+          'isActiveCall': false,
+        });
+        // showSuccessSnackBar("The call canceled form Student", 3, context);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          showSuccessSnackBar("Call rejected from student", 3, context);
+          Navigator.of(context, rootNavigator: true).pop();
+        });
+        if (!isClosed) emit(CallRejectedFromStudentState(callId: callId));
+      });
+    } catch (e, s) {
+      if (!isClosed) {
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${e.toString()}");
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${s.toString()}");
+        emit(CallErrorState("Failed to reject call: $e"));
+      }
+    }
+  }
+
+  // Start Call Timer to Update Duration
+  // void startCallTimer(String callID) {
+  //   _durationTimer?.cancel();
+  //   var duration = Duration.zero;
+  //
+  //   _durationTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+  //     duration += const Duration(minutes: 1);
+  //     firebaseServices.updateCallDuration(callID, duration);
+  //   });
+  // }
+
+  // End the call
+  Future<void> endCall(
+    Call call,
+    String userId,
+    String userName,
+    context,
+    UserAuthController userAuthController,
+  ) async {
+    print("----------- Call canceled from: $userId -----------, name: $userName");
+    emit(LoadingCallEndedState());
+    await call.leave().then(
+      (value) {
+        print("----------- ----------- ----------- ----------- ----------- -----------");
+        if (value.isSuccess) {
+          print("************* ************* ************* ************* ************* *************");
+          AppConsumers().compositeSubscription.cancel();
+          streamVideo.pushNotificationManager!.endAllCalls();
+          streamVideo.pushNotificationManager!.dispose();
+          streamVideo.observeCallEndedCallKitEvent()!.cancel();
+          // _durationTimer?.cancel();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            print("><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><");
+            Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(
+                    builder: (context) =>
+                        Layout(type: userAuthController.currentUser?.role == 'admin' ? "Teacher" : 'Student')),
+                (route) => false);
+            if (!isClosed) emit(SuccessCallEndedState());
+          });
+        } else {
+          if (!isClosed) {
+            print(
+                "-----------***********************----------- ${value.isFailure} -----------***********************-----------");
+            emit(CallErrorState("Call canceled Failed: ${value.isFailure}!!"));
+          }
+        }
+      },
+    ).catchError((onError, StackTrace stk) {
+      if (!isClosed) {
+        print("----------- Call Failed: ${onError.toString()} -----------");
+        print("----------- Call Failed: ${stk.toString()} -----------");
+        showErrorSnackBar("Failed", 3, context);
+        emit(FailedCallEndedState(onError));
+      }
+    });
+  }
+
+  @override
+  Future<void> close() {
+    // _cameraTrack!.stop();
+    // _microphoneTrack!.stop();
+    // _durationTimer!.cancel();
+    streamVideo.pushNotificationManager!.endAllCalls();
+    return super.close();
+  }
 }

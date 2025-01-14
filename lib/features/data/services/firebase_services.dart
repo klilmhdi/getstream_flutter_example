@@ -4,11 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:getstream_flutter_example/core/utils/consts/functions.dart';
 import 'package:getstream_flutter_example/features/data/models/calling_model.dart';
+import 'package:getstream_flutter_example/features/data/models/live_stream_model.dart';
 import 'package:getstream_flutter_example/features/data/models/meetings_model.dart';
 import 'package:getstream_flutter_example/features/data/models/user_model.dart';
-import 'package:uuid/uuid.dart';
 
 class FirebaseServices {
   ///==================== > Variables
@@ -45,12 +44,9 @@ class FirebaseServices {
     required String role,
     required String token,
   }) async {
-    // final String? token = await initFcmToken();
     String platform = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS
         ? "Mobile"
         : "Web";
-
-    // String collectionName = role.toLowerCase() == 'teacher' ? 'teachers' : 'students';
 
     final UserModel userModel =
         UserModel(uid: uid, name: name, email: email, role: role, platform: platform, token: token, isActiveUser: true);
@@ -59,14 +55,15 @@ class FirebaseServices {
     await database.ref('users').child(uid).set(userModel.toMap());
   }
 
-  ///==================== > Upload call data to FirebaseFirestore
+  ///==================== > Upload call data to Firebase Firestore Database and Real-Time Database
   Future<void> uploadCallDataToFirebase(CallingModel calling) async {
-    await firestore.collection("calls").doc(calling.callID).set({
-      'callId': calling.callID,
-      'callerId': calling.callerID,
-      'callingId': calling.callingID,
-      'isActiveCall': calling.isActiveCall,
-    });
+    await Future.wait([
+      // upload to firebase firestore database
+      firestore.collection("calls").doc(calling.callID).set(calling.toMap()),
+
+      // upload to real time database
+      database.ref('calls/${calling.callID}').set(calling.toMap()),
+    ]);
   }
 
   ///==================== > Upload meet data to FirebaseFirestore
@@ -75,16 +72,49 @@ class FirebaseServices {
     await database.ref('meets/${meeting.meetID}').set(meeting.toMap());
   }
 
-  /*
-  create update function for call
-    'createdAt': Timestamp.now(),
-    'startCallDuration': 0,
-    'endCallDuration': 0,
-   */
+  ///==================== > Upload livestream data to Firebase Firestore Database and Real-Time Database
+  Future<void> uploadLiveStreamDataToFirebase(LiveStreamModel living) async =>
+      await firestore.collection("livestreams").doc(living.id).set({
+        'id': living.id,
+        'title': living.title,
+        'creatorId': living.creatorId,
+        'creatorName': living.creatorName,
+        'isLive': living.isLive,
+        'duration': living.duration.inSeconds,
+        'startTime': living.startTime.toIso8601String(),
+        'endTime': living.endTime?.toIso8601String(),
+        'subscriptionsId': living.subscriptionsId,
+        'subscriptionsName': living.subscriptionsName,
+      });
 
   ///==================== > Get user data from FirebaseFirestore
-  Future<DocumentSnapshot> getUserDataFromFirebase(String uid) async {
-    return await firestore.collection("users").doc(uid).get();
+  Future<DocumentSnapshot> getUserDataFromFirebase(String uid) async =>
+      await firestore.collection("users").doc(uid).get();
+
+  ///==================== > Get caller data from calls collections in FirebaseFirestore
+  Future<Map<String, dynamic>?> getCallerDetails(String callId) async =>
+      await FirebaseServices().firestore.collection('calls').doc(callId).get().then(
+        (value) {
+          if (value.exists) {
+            return {
+              'callerId': value['callerID'],
+              'callerName': value['callerName'],
+            };
+          }
+        },
+      ).catchError((onError, StackTrace stk) {
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Error: ${onError.toString()}");
+        print(">?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>StackError: ${stk.toString()}");
+      });
+
+  /// Update Call Duration
+  Future<void> updateCallDuration(String callID, Duration duration) async {
+    final durationSeconds = duration.inSeconds;
+
+    await Future.wait([
+      firestore.collection("calls").doc(callID).update({'duration': durationSeconds}),
+      database.ref('calls/$callID').update({'duration': durationSeconds}),
+    ]);
   }
 
   ///==================== > check if current user is teacher
@@ -110,9 +140,8 @@ class FirebaseServices {
 
   ///==================== > Other Methods (login, logout, etc.)
   ///==================== > login
-  Future<void> login({required String email, required String password}) async {
-    await auth.signInWithEmailAndPassword(email: email, password: password);
-  }
+  Future<void> login({required String email, required String password}) async =>
+      await auth.signInWithEmailAndPassword(email: email, password: password);
 
   ///==================== > logout
   Future<void> logout() async {

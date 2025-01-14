@@ -4,7 +4,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:getstream_flutter_example/core/utils/widgets.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/badged_call_option.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_duration_title.dart';
 import 'package:getstream_flutter_example/features/presentation/widgets/call_participants_list.dart';
@@ -13,12 +12,12 @@ import 'package:getstream_flutter_example/features/presentation/widgets/settings
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_video_flutter/stream_video_flutter.dart' hide User;
 
-import '../../../../core/di/injector.dart';
-import '../../../../core/utils/controllers/user_auth_controller.dart';
-import '../../../data/repo/app_preferences.dart';
-import '../../../data/repo/user_chat_repository.dart';
-import '../../manage/meet/meet_cubit.dart';
-import '../home/layout.dart';
+import '../../../../../core/di/injector.dart';
+import '../../../../../core/utils/controllers/user_auth_controller.dart';
+import '../../../../data/repo/app_preferences.dart';
+import '../../../../data/repo/user_chat_repository.dart';
+import '../../../manage/meet/meet_cubit.dart';
+import '../../home/layout.dart';
 
 class MeetScreen extends StatefulWidget {
   const MeetScreen({
@@ -67,16 +66,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
       widget.call.setMicrophoneEnabled(enabled: false);
     }
   }
-
-  // @override
-  // void didChangeAppLifecycleState(AppLifecycleState state) {
-  //   if (state == AppLifecycleState.paused ||
-  //       state == AppLifecycleState.inactive ||
-  //       state == AppLifecycleState.detached) {
-  //   } else if (state == AppLifecycleState.resumed) {}
-  //
-  //   super.didChangeAppLifecycleState(state);
-  // }
 
   @override
   void dispose() {
@@ -146,7 +135,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
             if (callState.status.isDisconnected) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  // const CircularProgressIndicator();
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(
@@ -156,7 +144,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                     ),
                     (route) => false,
                   );
-                  showSuccessSnackBar("Meeting finished successfully!", 3, context);
                 }
               });
             }
@@ -177,18 +164,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                       ),
                       androidPiPConfiguration: AndroidPictureInPictureConfiguration()),
                   callParticipantsBuilder: (context, call, callState) {
-                    if (callState.status.isDisconnected) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                Layout(type: userAuthController.currentUser!.role == 'admin' ? "Teacher" : 'Student')),
-                        (route) => false,
-                      );
-                      // Navigator.pop(context);
-                      showSuccessSnackBar("Meeting finished successful!", 3, context);
-                    }
-
                     return Stack(
                       children: [
                         StreamCallParticipants(
@@ -223,14 +198,11 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
                     leadingWidth: 120,
                     leading: Row(children: [
                       ToggleLayoutOption(onLayoutModeChanged: (layout) => setState(() => _currentLayoutMode = layout)),
-                      if (!kIsWeb) FlipCameraOption(call: call, localParticipant: call.state.value.localParticipant!),
+                      if (!kIsWeb) FlipCameraOption(call: call, localParticipant: callState.localParticipant!),
                     ]),
                     title: call.state.valueOrNull!.callParticipants.length > 1
-                        ? MeetDurationTitle(
-                            call: widget.call,
-                            // onJoinCall: () async => callState.callParticipants.length > 1
-                          )
-                        : const WaitingJoinMeetWidget(),
+                        ? MeetDurationTitle(call: widget.call)
+                        : waitingJoinMeetWidget(context),
                     actions: [
                       LeaveCallOption(
                         call: call,
@@ -303,47 +275,6 @@ class _MeetScreenState extends State<MeetScreen> with WidgetsBindingObserver {
       ),
     );
   }
-
-  // void _leaveCall() async {
-  //   print("Initiating onLeaveCallTap...");
-  //   await _cameraTrack?.stop();
-  //   await _microphoneTrack?.stop();
-  //   try {
-  //     if (widget.call.state.value.status.isActive) {
-  //       if (await _isTeacher) {
-  //         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Navigating to Teacher layout...");
-  //         await context
-  //             .read<MeetingsCubit>()
-  //             .endMeetFromTeacher(context, widget.call.id, widget.call)
-  //             .then((value) async {
-  //           print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Leave from student...");
-  //           await context.read<MeetingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
-  //         });
-  //       } else {
-  //         print("Navigating to Student layout...");
-  //         if (!mounted) return;
-  //         await context.read<MeetingsCubit>().leaveMeetForStudent(context, widget.call.id, widget.call);
-  //       }
-  //     }
-  //   } catch (e) {
-  //     print("Error in role check or navigation: $e");
-  //   }
-  //
-  //   try {
-  //     if (widget.call.state.value.status.isActive) {
-  //       await widget.call.reject(reason: CallRejectReason.cancel());
-  //     }
-  //   } catch (e) {
-  //     print("Error rejecting the call: $e");
-  //   }
-  //
-  //   try {
-  //     await widget.call.end();
-  //     await widget.call.leave();
-  //   } catch (e) {
-  //     print("Error ending or leaving the call: $e");
-  //   }
-  // }
 
   void _showChat(BuildContext context) {
     if (_channel == null || _channel!.state == null) {

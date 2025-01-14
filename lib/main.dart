@@ -5,9 +5,11 @@ import 'package:getstream_flutter_example/core/app/app_consumers.dart';
 import 'package:getstream_flutter_example/core/di/injector.dart';
 import 'package:getstream_flutter_example/core/utils/controllers/user_auth_controller.dart';
 import 'package:getstream_flutter_example/core/utils/widgets.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/audio_room/audio_room_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/auth/register/register_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/call/call_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/fetch_users/fetch_users_cubit.dart';
+import 'package:getstream_flutter_example/features/presentation/manage/live_stream/live_stream_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/manage/meet/meet_cubit.dart';
 import 'package:getstream_flutter_example/features/presentation/view/home/layout.dart';
 import 'package:getstream_flutter_example/features/presentation/view/splash_screen.dart';
@@ -40,7 +42,7 @@ class _MainAppState extends State<MainApp> {
       // ..initializeServices(context)
       ..initPushNotificationManagerIfAvailable(context)
       ..consumeIncomingCall(context)
-    ..initPushNotificationManagerIfAvailable(context);
+      ..initPushNotificationManagerIfAvailable(context);
   }
 
   @override
@@ -68,12 +70,16 @@ class _MainAppState extends State<MainApp> {
             create: (context) => FetchUsersCubit()
               ..fetchUsersBasedOnRole()
               ..fetchStudents()),
-        BlocProvider(create: (context) => MeetingsCubit()),
+        BlocProvider<MeetingsCubit>(create: (context) => MeetingsCubit()),
+        BlocProvider<LiveStreamCubit>(create: (context) => LiveStreamCubit()),
+        BlocProvider<AudioRoomCubit>(create: (context) => AudioRoomCubit()),
         BlocProvider<CallingsCubit>(create: (context) => CallingsCubit())
       ],
       child: MaterialApp(
-        builder: (context, child) =>
-            StreamChat(client: StreamChatClient("z3k88gbquy4a", logLevel: Level.INFO), child: child),
+        builder: (context, child) => StreamChat(
+          client: StreamChatClient("z3k88gbquy4a", logLevel: Level.INFO),
+          child: child,
+        ),
         theme: ThemeData(
           extensions: <ThemeExtension<dynamic>>[
             StreamVideoTheme.dark().copyWith(
@@ -103,7 +109,7 @@ class _MainAppState extends State<MainApp> {
 
                 return const Directionality(
                   textDirection: TextDirection.ltr,
-                  child: Center(child: Text('Error loading app')),
+                  child: Scaffold(body: Center(child: Text('Error loading app'))),
                 );
               }
               // Navigate based on the saved user’s role

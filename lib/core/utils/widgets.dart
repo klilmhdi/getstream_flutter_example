@@ -47,14 +47,14 @@ showSuccessSnackBar(String title, int duration, BuildContext context) => Scaffol
         content: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Icon(
               Icons.check_circle_rounded,
               color: CupertinoColors.white,
               size: 30,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 title,

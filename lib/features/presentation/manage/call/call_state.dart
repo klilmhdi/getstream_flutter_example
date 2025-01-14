@@ -50,14 +50,13 @@ class IncomingCallState extends CallingsState {
 
   // final CallState callState;
   final CallStatus callStatus = CallStatus.incoming(acceptedByMe: true);
-  final String teacherName, teacherId;
+  final String teacherName, teacherId, teacherImage;
 
   IncomingCallState({
     required this.call,
     required this.teacherName,
     required this.teacherId,
-    // required this.callState,
-    // required this.callStatus,
+    required this.teacherImage,
   });
 }
 
@@ -90,7 +89,18 @@ class CallRejectedFromStudentState extends CallingsState {
 }
 
 /// End the call
-class CallEndedState extends CallingsState {}
+class LoadingCallEndedState extends CallingsState {}
+
+class SuccessCallEndedState extends CallingsState {}
+
+class FailedCallEndedState extends CallingsState {
+  final String message;
+
+  const FailedCallEndedState(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
 
 /// Leave the call
 class CallLeavedState extends CallingsState {}
